@@ -1,18 +1,6 @@
 # Ambiente de Desenvolvimento - FIAP Cloud Games (Tech Challenge)
 
-Este repositório contém a infraestrutura de desenvolvimento para o projeto Tech Challenge.
-
-## Estrutura do Repositório
-
-```
-postech-infrastructure/
-├── docker/
-│   ├── docker-compose.yml          # Orquestração local com Docker Compose
-│   ├── init-scripts/
-│   │   └── 01-init-databases.sql   # Script de inicialização do PostgreSQL
-│   └── README.md                    # Este arquivo
-└── k8s/                             # Manifestos Kubernetes (a ser criado)
-```
+Docker compose contendo configuração dos containeres de dependências dos serviços da fase 2 + containeres utilizando versão latest dos serviços locais
 
 ## Serviços Incluídos
 
@@ -113,15 +101,7 @@ amqp://postech_user:postech_rabbit_password@localhost:5672
 - **Senhas:** As senhas neste arquivo são apenas para desenvolvimento local.
 - **Volumes:** Os dados são persistidos em volumes Docker. Use `docker-compose down -v` para apagar tudo.
 - **Network:** Todos os serviços estão na mesma network `postech-network` para facilitar comunicação.
-- **Healthchecks:** Todos os serviços têm healthchecks configurados para garantir que estão prontos antes de serem usados.
-
-## Próximos Passos
-
-1. Subir o ambiente: `docker-compose up -d`
-2. Verificar se todos os serviços estão rodando: `docker-compose ps`
-3. Acessar o PgAdmin e configurar a conexão com o PostgreSQL
-4. Acessar o RabbitMQ Management para verificar as filas
-5. Começar a desenvolver os microsserviços!
+- **Healthchecks:** Todos os serviços tem healthchecks configurados para garantir que estão prontos antes de serem usados.
 
 ## Repositórios dos Microsserviços
 
