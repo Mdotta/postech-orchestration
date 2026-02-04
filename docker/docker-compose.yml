@@ -5,18 +5,18 @@ services:
     image: postgres:16-alpine
     container_name: postech-postgres
     environment:
-      POSTGRES_USER: postech_admin
-      POSTGRES_PASSWORD: postech_dev_password
-      POSTGRES_DB: postech_main
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - postech-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postech_admin -d postech_main"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,11 +26,11 @@ services:
     image: dpage/pgadmin4:latest
     container_name: postech-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@postech.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: ${PGADMIN_CONFIG_SERVER_MODE}
     ports:
-      - "5050:80"
+      - "${PGADMIN_PORT}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
@@ -43,12 +43,12 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: postech-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: postech_user
-      RABBITMQ_DEFAULT_PASS: postech_rabbit_password
-      RABBITMQ_DEFAULT_VHOST: /
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
     ports:
-      - "5672:5672"   # AMQP protocol
-      - "15672:15672" # Management UI
+      - "${RABBITMQ_PORT}:5672"   # AMQP protocol
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672" # Management UI
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
       - rabbitmq_log:/var/log/rabbitmq
@@ -65,7 +65,7 @@ services:
     image: redis:7-alpine
     container_name: postech-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -79,28 +79,30 @@ services:
 
   # Postech Users API - Serviço de gerenciamento de usuários
   postech-users-api:
-    image: postech-users-api:latest
+    build:
+      context: ${USERS_API_CONTEXT}
+      dockerfile: Dockerfile
     container_name: postech-users-api
     ports:
-      - "8080:8080"
-      - "8181:8181"
+      - "${USERS_API_PORT}:8080"
+      - "${USERS_API_METRICS_PORT}:8181"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=postech_users;Username=postech_admin;Password=postech_dev_password
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - ConnectionStrings__DefaultConnection=Host=${POSTGRES_HOST};Database=${USERS_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
-      - JwtSettings__Issuer=PostechAuthServer
-      - JwtSettings__Audience=PostechUsersAPI
-      - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=postech_user
-      - RabbitMQ__Password=postech_rabbit_password
-      - Redis__Host=redis
+      - JwtSettings__Issuer=${JWT_ISSUER}
+      - JwtSettings__Audience=${JWT_AUDIENCE}
+      - RabbitMQ__Host=${RABBITMQ_HOST}
+      - RabbitMQ__Username=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
+      - Redis__Host=${REDIS_HOST}
     depends_on:
       - postgres
       - rabbitmq
       - redis
     networks:
       - postech-network
-
+  
 
 volumes:
   postgres_data:
