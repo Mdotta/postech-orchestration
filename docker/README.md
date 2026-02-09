@@ -35,37 +35,105 @@ Cache para tokens JWT e sessões (opcional)
 - Docker Desktop instalado
 - Docker Compose instalado
 
+## Scripts de Gerenciamento
+
+Para facilitar o uso, foram criados scripts bash na pasta `scripts/` que automatizam as operações mais comuns:
+
+### `scripts/start.sh`
+Inicia todos os serviços. Se o arquivo `.env` não existir, cria automaticamente a partir do `.env.example`.
+```bash
+scripts/start.sh
+```
+
+### `scripts/stop.sh`
+Para todos os serviços (preserva os volumes/dados).
+```bash
+scripts/stop.sh
+```
+
+### `scripts/restart.sh`
+Reinicia todos os serviços.
+```bash
+scripts/restart.sh
+```
+
+### `scripts/logs.sh`
+Exibe os logs dos serviços em tempo real.
+```bash
+# Ver logs de todos os serviços
+scripts/logs.sh
+
+# Ver logs de um serviço específico
+scripts/logs.sh postgres
+scripts/logs.sh postech-users-api
+```
+
+### `scripts/build.sh`
+Faz rebuild dos serviços (útil após alterações no código).
+```bash
+# Rebuild de todos os serviços
+scripts/build.sh
+
+# Rebuild de um serviço específico
+scripts/build.sh postech-users-api
+```
+
+### `scripts/status.sh`
+Verifica o status e health dos serviços.
+```bash
+scripts/status.sh
+```
+
+### `scripts/clean.sh`
+**CUIDADO:** Remove tudo (containers, volumes e dados). Use com cautela!
+```bash
+scripts/clean.sh
+```
+
 ## Como usar
 
 ### Subir todos os serviços
 ```bash
 cd docker
+scripts/start.sh
+# ou
 docker-compose up -d
 ```
 
 ### Ver logs de todos os serviços
 ```bash
+scripts/logs.sh
+# ou
 docker-compose logs -f
 ```
 
 ### Ver logs de um serviço específico
 ```bash
+scripts/logs.sh postgres
+scripts/logs.sh rabbitmq
+# ou
 docker-compose logs -f postgres
 docker-compose logs -f rabbitmq
 ```
 
 ### Parar todos os serviços
 ```bash
+scripts/stop.sh
+# ou
 docker-compose down
 ```
 
 ### Parar e remover volumes (apaga todos os dados)
 ```bash
+scripts/clean.sh
+# ou
 docker-compose down -v
 ```
 
 ### Verificar status dos serviços
 ```bash
+scripts/status.sh
+# ou
 docker-compose ps
 ```
 
