@@ -7,36 +7,13 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
+      # - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - postech-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # PgAdmin - Interface web para gerenciar PostgreSQL
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: postech-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-      PGADMIN_CONFIG_SERVER_MODE: ${PGADMIN_CONFIG_SERVER_MODE}
-    ports:
-      - "${PGADMIN_PORT}:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - postech-network
-    depends_on:
-      - postgres
 
   # RabbitMQ - Message Broker para comunicação assíncrona
   rabbitmq:
@@ -54,72 +31,13 @@ services:
       - rabbitmq_log:/var/log/rabbitmq
     networks:
       - postech-network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis - Cache
-  redis:
-    image: redis:7-alpine
-    container_name: postech-redis
-    ports:
-      - "${REDIS_PORT}:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - postech-network
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Postech Users API - Serviço de gerenciamento de usuários
-  postech-users-api:
-    build:
-      context: ${USERS_API_CONTEXT}
-      dockerfile: Dockerfile
-    container_name: postech-users-api
-    ports:
-      - "${USERS_API_PORT}:8080"
-      - "${USERS_API_METRICS_PORT}:8181"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
-      - ConnectionStrings__DefaultConnection=Host=${POSTGRES_HOST};Database=${USERS_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
-      - JwtSettings__Issuer=${JWT_ISSUER}
-      - JwtSettings__Audience=${JWT_AUDIENCE}
-      - RabbitMQ__Host=${RABBITMQ_HOST}
-      - RabbitMQ__Username=${RABBITMQ_USER}
-      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
-      - Redis__Host=${REDIS_HOST}
-    depends_on:
-      - postgres
-      - rabbitmq
-      - redis
-    networks:
-      - postech-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-  
 
 volumes:
   postgres_data:
     driver: local
-  pgadmin_data:
-    driver: local
   rabbitmq_data:
     driver: local
   rabbitmq_log:
-    driver: local
-  redis_data:
     driver: local
 
 networks:

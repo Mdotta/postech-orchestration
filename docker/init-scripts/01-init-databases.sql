@@ -7,12 +7,6 @@ CREATE DATABASE postech_users;
 -- Database para o microsserviço de Catálogo
 CREATE DATABASE postech_catalog;
 
--- Database para o microsserviço de Pagamentos
-CREATE DATABASE postech_payments;
-
--- Database para o microsserviço de Notificações (se precisar persistir histórico)
-CREATE DATABASE postech_notifications;
-
 -- Garantir permissões
 GRANT ALL PRIVILEGES ON DATABASE postech_users TO postech_admin;
 GRANT ALL PRIVILEGES ON DATABASE postech_catalog TO postech_admin;
