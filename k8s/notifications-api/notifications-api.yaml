@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notifications-api-config
+  namespace: gamestore
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://+:80"
+  RabbitMQ__Host: "rabbitmq.infrastructure.svc.cluster.local"
+  RabbitMQ__Port: "5672"
+  RabbitMQ__VirtualHost: "/"
+  Brevo__SenderEmail: "fiapcloudgamesgrupo25@gmail.com"
+  Brevo__SenderName: "FIAP Cloud Games"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notifications-api-secret
+  namespace: gamestore
+type: Opaque
+stringData:
+  RabbitMQ__Username: "postech_user"
+  RabbitMQ__Password: "postech_rabbit_password"
+  Brevo__ApiKey: "CHANGE_TO_YOUR_BREVO_API_KEY"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications-api
+  namespace: gamestore
+  labels:
+    app: notifications-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifications-api
+  template:
+    metadata:
+      labels:
+        app: notifications-api
+    spec:
+      containers:
+        - name: notifications-api
+          image: ${DOCKER_USER}/notifications-api:${IMAGE_TAG}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: notifications-api-config
+            - secretRef:
+                name: notifications-api-secret
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications-api
+  namespace: gamestore
+  labels:
+    app: notifications-api
+spec:
+  selector:
+    app: notifications-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: notifications-api-ingress
+  namespace: gamestore
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: notifications-api.${BASE_DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: notifications-api
+                port:
+                  number: 80
