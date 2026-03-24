@@ -1,34 +1,26 @@
 # Ambiente de Desenvolvimento - FIAP Cloud Games (Tech Challenge)
 
-Docker compose contendo configuração dos containeres de dependências dos serviços da fase 2 + containeres utilizando versão latest dos serviços locais
+Docker compose com **PostgreSQL** e **RabbitMQ** para desenvolvimento local (os serviços .NET rodam na máquina host). O arquivo `.env.example` está alinhado aos `appsettings` dos repositórios: **Postgres `postgres`/`postgres`**, **RabbitMQ `guest`/`guest`**.
 
 ## Serviços Incluídos
 
 ### PostgreSQL (porta 5432)
-- **Usuário:** postech_admin
-- **Senha:** postech_dev_password
+- **Usuário:** `postgres` (veja `.env.example`)
+- **Senha:** `postgres`
 - **Databases criados automaticamente:**
   - `postech_users` - Microsserviço de Usuários
   - `postech_catalog` - Microsserviço de Catálogo
   - `postech_payments` - Microsserviço de Pagamentos
   - `postech_notifications` - Microsserviço de Notificações
 
-### PgAdmin (porta 5050)
-Interface web para gerenciar o PostgreSQL
-- **URL:** http://localhost:5050
-- **Email:** admin@postech.com
-- **Senha:** admin123
-
 ### RabbitMQ (portas 5672 e 15672)
 Message broker para comunicação entre microsserviços
-- **AMQP URL:** amqp://postech_user:postech_rabbit_password@localhost:5672
+- **AMQP URL:** `amqp://guest:guest@localhost:5672`
 - **Management UI:** http://localhost:15672
-- **Usuário:** postech_user
-- **Senha:** postech_rabbit_password
+- **Usuário:** `guest`
+- **Senha:** `guest`
 
-### Redis (porta 6379)
-Cache para tokens JWT e sessões (opcional)
-- **URL:** redis://localhost:6379
+> **Nota:** PgAdmin e Redis podem constar em documentação antiga; o `docker-compose.yml` atual desta pasta sobe apenas **postgres** e **rabbitmq**.
 
 ## Pré-requisitos
 
@@ -141,27 +133,27 @@ docker-compose ps
 
 ### UsersAPI
 ```
-Host=localhost;Port=5432;Database=postech_users;Username=postech_admin;Password=postech_dev_password
+Host=localhost;Port=5432;Database=postech_users;Username=postgres;Password=postgres
 ```
 
 ### CatalogAPI
 ```
-Host=localhost;Port=5432;Database=postech_catalog;Username=postech_admin;Password=postech_dev_password
+Host=localhost;Port=5432;Database=postech_catalog;Username=postgres;Password=postgres
 ```
 
 ### PaymentsAPI
 ```
-Host=localhost;Port=5432;Database=postech_payments;Username=postech_admin;Password=postech_dev_password
+Host=localhost;Port=5432;Database=postech_payments;Username=postgres;Password=postgres
 ```
 
 ### NotificationsAPI
 ```
-Host=localhost;Port=5432;Database=postech_notifications;Username=postech_admin;Password=postech_dev_password
+Host=localhost;Port=5432;Database=postech_notifications;Username=postgres;Password=postgres
 ```
 
 ### RabbitMQ Connection
 ```
-amqp://postech_user:postech_rabbit_password@localhost:5672
+amqp://guest:guest@localhost:5672
 ```
 
 ## Notas Importantes
