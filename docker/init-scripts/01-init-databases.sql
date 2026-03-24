@@ -7,8 +7,14 @@ CREATE DATABASE postech_users;
 -- Database para o microsserviço de Catálogo
 CREATE DATABASE postech_catalog;
 
--- Garantir permissões
-GRANT ALL PRIVILEGES ON DATABASE postech_users TO postech_admin;
-GRANT ALL PRIVILEGES ON DATABASE postech_catalog TO postech_admin;
-GRANT ALL PRIVILEGES ON DATABASE postech_payments TO postech_admin;
-GRANT ALL PRIVILEGES ON DATABASE postech_notifications TO postech_admin;
+-- Database para o microsserviço de Pagamentos
+CREATE DATABASE postech_payments;
+
+-- Database para o microsserviço de Notificações
+CREATE DATABASE postech_notifications;
+
+-- Garantir permissões (usuário padrão do compose alinhado ao .env.example: postgres)
+GRANT ALL PRIVILEGES ON DATABASE postech_users TO postgres;
+GRANT ALL PRIVILEGES ON DATABASE postech_catalog TO postgres;
+GRANT ALL PRIVILEGES ON DATABASE postech_payments TO postgres;
+GRANT ALL PRIVILEGES ON DATABASE postech_notifications TO postgres;
