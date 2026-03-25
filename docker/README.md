@@ -1,171 +1,161 @@
-# Ambiente de Desenvolvimento - FIAP Cloud Games (Tech Challenge)
+# Ambiente Local com Docker - FIAP Cloud Games
 
-Docker compose com **PostgreSQL** e **RabbitMQ** para desenvolvimento local (os serviços .NET rodam na máquina host). O arquivo `.env.example` está alinhado aos `appsettings` dos repositórios: **Postgres `postgres`/`postgres`**, **RabbitMQ `guest`/`guest`**.
+Este diretório sobe apenas a infraestrutura compartilhada para desenvolvimento local:
 
-## Serviços Incluídos
+- PostgreSQL
+- RabbitMQ (com UI de management)
 
-### PostgreSQL (porta 5432)
-- **Usuário:** `postgres` (veja `.env.example`)
-- **Senha:** `postgres`
-- **Databases criados automaticamente:**
-  - `postech_users` - Microsserviço de Usuários
-  - `postech_catalog` - Microsserviço de Catálogo
-  - `postech_payments` - Microsserviço de Pagamentos
-  - `postech_notifications` - Microsserviço de Notificações
+As APIs podem rodar localmente na sua máquina (fora do Compose) ou ser executadas pelo ambiente da pasta `temp/`.
 
-### RabbitMQ (portas 5672 e 15672)
-Message broker para comunicação entre microsserviços
-- **AMQP URL:** `amqp://guest:guest@localhost:5672`
-- **Management UI:** http://localhost:15672
-- **Usuário:** `guest`
-- **Senha:** `guest`
+## Dependências
 
-> **Nota:** PgAdmin e Redis podem constar em documentação antiga; o `docker-compose.yml` atual desta pasta sobe apenas **postgres** e **rabbitmq**.
+- Docker Desktop (ou Docker Engine)
+- Docker Compose (`docker compose` ou `docker-compose`)
+- Bash (para executar os scripts da pasta `scripts/`)
 
-## Pré-requisitos
+## Serviços e portas
 
-- Docker Desktop instalado
-- Docker Compose instalado
+### PostgreSQL
+- Host local: `localhost`
+- Porta: `5432` (mapeada por `${POSTGRES_PORT}` no `.env`)
+- Databases criados automaticamente no primeiro start:
+  - `postech_users`
+  - `postech_catalog`
+  - `postech_payments`
+  - `postech_notifications`
 
-## Scripts de Gerenciamento
+### RabbitMQ
+- AMQP: `localhost:5672`
+- Management UI: `http://localhost:15672`
 
-Para facilitar o uso, foram criados scripts bash na pasta `scripts/` que automatizam as operações mais comuns:
+## Configuração
+
+Na primeira execução, `scripts/start.sh` cria `.env` a partir de `.env.example` se necessário.
+
+Fluxo recomendado:
+
+```bash
+cd docker
+cp .env.example .env   # se ainda nao existir
+```
+
+Depois ajuste usuário/senha/portas no `.env` conforme sua necessidade.
+
+## Scripts e funcionalidades
+
+Todos os scripts devem ser executados a partir da pasta `docker/`.
 
 ### `scripts/start.sh`
-Inicia todos os serviços. Se o arquivo `.env` não existir, cria automaticamente a partir do `.env.example`.
+Sobe a infraestrutura em background (`docker-compose up -d`) e mostra status.
+
 ```bash
-scripts/start.sh
+cd docker
+bash scripts/start.sh
 ```
 
 ### `scripts/stop.sh`
-Para todos os serviços (preserva os volumes/dados).
+Para e remove os containers (mantendo volumes e dados).
+
 ```bash
-scripts/stop.sh
+cd docker
+bash scripts/stop.sh
 ```
 
 ### `scripts/restart.sh`
-Reinicia todos os serviços.
+Reinicia os serviços já em execução.
+
 ```bash
-scripts/restart.sh
+cd docker
+bash scripts/restart.sh
 ```
 
-### `scripts/logs.sh`
-Exibe os logs dos serviços em tempo real.
-```bash
-# Ver logs de todos os serviços
-scripts/logs.sh
+### `scripts/logs.sh [servico]`
+Mostra logs em tempo real de todos os serviços ou de um serviço específico.
 
-# Ver logs de um serviço específico
-scripts/logs.sh postgres
-scripts/logs.sh postech-users-api
+```bash
+cd docker
+bash scripts/logs.sh
+bash scripts/logs.sh postgres
+bash scripts/logs.sh rabbitmq
 ```
 
-### `scripts/build.sh`
-Faz rebuild dos serviços (útil após alterações no código).
-```bash
-# Rebuild de todos os serviços
-scripts/build.sh
+### `scripts/build.sh [servico]`
+Executa `docker-compose build --no-cache`. Neste compose atual (infra com imagens oficiais), é útil principalmente para padronizar fluxo de rebuild.
 
-# Rebuild de um serviço específico
-scripts/build.sh postech-users-api
+```bash
+cd docker
+bash scripts/build.sh
+bash scripts/build.sh rabbitmq
 ```
 
 ### `scripts/status.sh`
-Verifica o status e health dos serviços.
+Exibe `docker-compose ps` e tenta consultar health dos containers.
+
 ```bash
-scripts/status.sh
+cd docker
+bash scripts/status.sh
 ```
 
 ### `scripts/clean.sh`
-**CUIDADO:** Remove tudo (containers, volumes e dados). Use com cautela!
-```bash
-scripts/clean.sh
-```
+Limpa completamente o ambiente (containers, volumes e imagens locais do compose).
 
-## Como usar
-
-### Subir todos os serviços
 ```bash
 cd docker
-scripts/start.sh
-# ou
-docker-compose up -d
+bash scripts/clean.sh
 ```
 
-### Ver logs de todos os serviços
+## Exemplos com comandos Docker Compose
+
+### Subir infraestrutura
+
 ```bash
-scripts/logs.sh
-# ou
-docker-compose logs -f
+cd docker
+docker compose up -d
 ```
 
-### Ver logs de um serviço específico
+### Ver status
+
 ```bash
-scripts/logs.sh postgres
-scripts/logs.sh rabbitmq
-# ou
-docker-compose logs -f postgres
-docker-compose logs -f rabbitmq
+cd docker
+docker compose ps
 ```
 
-### Parar todos os serviços
+### Acompanhar logs do RabbitMQ
+
 ```bash
-scripts/stop.sh
-# ou
-docker-compose down
+cd docker
+docker compose logs -f rabbitmq
 ```
 
-### Parar e remover volumes (apaga todos os dados)
+### Derrubar mantendo dados
+
 ```bash
-scripts/clean.sh
-# ou
-docker-compose down -v
+cd docker
+docker compose down
 ```
 
-### Verificar status dos serviços
+### Derrubar removendo volumes
+
 ```bash
-scripts/status.sh
-# ou
-docker-compose ps
+cd docker
+docker compose down -v
 ```
 
-## Connection Strings para os Microsserviços
+## Strings de conexão de referência
 
-### UsersAPI
-```
-Host=localhost;Port=5432;Database=postech_users;Username=postgres;Password=postgres
-```
+### PostgreSQL
 
-### CatalogAPI
-```
-Host=localhost;Port=5432;Database=postech_catalog;Username=postgres;Password=postgres
+```text
+Host=localhost;Port=5432;Database=postech_users;Username=<POSTGRES_USER>;Password=<POSTGRES_PASSWORD>
 ```
 
-### PaymentsAPI
-```
-Host=localhost;Port=5432;Database=postech_payments;Username=postgres;Password=postgres
-```
+### RabbitMQ
 
-### NotificationsAPI
-```
-Host=localhost;Port=5432;Database=postech_notifications;Username=postgres;Password=postgres
+```text
+amqp://<RABBITMQ_USER>:<RABBITMQ_PASSWORD>@localhost:5672
 ```
 
-### RabbitMQ Connection
-```
-amqp://guest:guest@localhost:5672
-```
+## Observações
 
-## Notas Importantes
-
-- **Senhas:** As senhas neste arquivo são apenas para desenvolvimento local.
-- **Volumes:** Os dados são persistidos em volumes Docker. Use `docker-compose down -v` para apagar tudo.
-- **Network:** Todos os serviços estão na mesma network `postech-network` para facilitar comunicação.
-- **Healthchecks:** Todos os serviços tem healthchecks configurados para garantir que estão prontos antes de serem usados.
-
-## Repositórios dos Microsserviços
-
-- **postech-users-api** - Cadastro, autenticação (JWT) e autorização
-- **postech-catalog-api** - CRUD de jogos e início do fluxo de compra
-- **postech-payments-api** - Processamento de pagamentos
-- **postech-notifications-api** - Envio de e-mails (boas-vindas e confirmação de compra)
+- O script SQL `init-scripts/01-init-databases.sql` roda apenas na primeira inicialização do volume do PostgreSQL.
+- Para recriar bancos do zero, use `docker compose down -v` e suba novamente.
