@@ -1,136 +1,201 @@
 # postech-orchestration - Kubernetes
 
-Manifests Kubernetes para deploy do **FIAP Cloud Games** no cluster Kubernetes.
+Manifests e scripts para deploy do FIAP Cloud Games em Kubernetes.
 
-## Pré-requisitos
+## Dependências
 
-- [`kubectl`](https://kubernetes.io/docs/tasks/tools/) instalado
-- Acesso a um cluster Kubernetes configurado em `~/.kube/config`
-- [`envsubst`](https://www.gnu.org/software/gettext/) instalado (`sudo apt install gettext-base`)
+- `kubectl` instalado e configurado para um cluster acessível (`kubectl cluster-info` deve funcionar)
+- `envsubst` instalado (pacote `gettext`)
+- Docker (necessário para rebuild/push das imagens usadas pelo cluster)
+- Bash
+
+## Visão geral do que é deployado
+
+- Namespaces: `gamestore` e `infrastructure`
+- Infraestrutura padrão do script `deploy.sh`:
+    - PostgreSQL
+    - RabbitMQ
+- Microsserviços:
+    - users-api
+    - catalog-api
+    - payments-api
+    - notifications-api
+
+Observação: existe manifesto para Redis em `infrastructure/redis.yaml`, mas o `scripts/deploy.sh` atual nao aplica esse recurso automaticamente.
 
 ## Configuração do ambiente
 
-Antes de fazer o deploy, edite o arquivo `k8s/env.sh` com os valores do seu ambiente:
+Edite `postech-orchestration/.env` antes do primeiro deploy:
 
 ```bash
-# IP do LoadBalancer do seu cluster
-export LOAD_BALANCER_IP="127.0.0.1"
-
-# Docker Hub username dono das imagens
-export DOCKER_USER="seuUsuario"
-
-# Tag das imagens
-export IMAGE_TAG="v1"
+export LOAD_BALANCER_IP="192.168.49.2"  # IP/host para acesso via NodePort
+export DOCKER_USER="seu_usuario"        # dono das imagens no registry
+export IMAGE_TAG="1.0"                  # tag das imagens
 ```
 
-### Como descobrir o IP do LoadBalancer
+O arquivo `k8s/env.sh` apenas carrega essas variaveis da raiz para manter
+consistencia com o Docker Compose em `temp/`.
 
-```bash
-kubectl get svc -n ingress-nginx
-# Copie o EXTERNAL-IP do ingress-nginx-controller
+As imagens esperadas no cluster seguem o padrão:
+
+```text
+${DOCKER_USER}/users-api:${IMAGE_TAG}
+${DOCKER_USER}/catalog-api:${IMAGE_TAG}
+${DOCKER_USER}/payments-api:${IMAGE_TAG}
+${DOCKER_USER}/notifications-api:${IMAGE_TAG}
 ```
 
-## Como fazer o deploy
+## Scripts disponíveis e funcionalidades
+
+Todos os comandos abaixo partem da pasta `k8s/scripts`.
+
+### `start.sh`
+- Valida `kubectl`, `env.sh` e acesso ao cluster.
+- Executa `deploy.sh`.
+- Inicia `kubectl port-forward` para as APIs e PostgreSQL.
+- Armazena PIDs em `k8s/.runtime/port-forward.pids`.
 
 ```bash
 cd k8s/scripts
-chmod +x deploy.sh
-./deploy.sh
+bash start.sh
 ```
 
-## Como fazer o deploy em outro cluster
+Portas locais abertas por `start.sh`:
 
-1. Configure o `~/.kube/config` apontando para o novo cluster
-2. Edite o `k8s/env.sh` com o novo IP do LoadBalancer
-3. Execute `./scripts/deploy.sh`
+- `http://127.0.0.1:8081` -> users-api
+- `http://127.0.0.1:8082` -> catalog-api
+- `http://127.0.0.1:8083` -> payments-api
+- `http://127.0.0.1:8084` -> notifications-api
+- `localhost:5432` -> postgresql (namespace `infrastructure`)
+
+### `deploy.sh`
+- Aplica namespaces.
+- Aplica PostgreSQL e RabbitMQ.
+- Aguarda pods ficarem prontos.
+- Faz `envsubst` nos manifests das APIs para substituir `${DOCKER_USER}` e `${IMAGE_TAG}`.
+
+```bash
+cd k8s/scripts
+bash deploy.sh
+```
+
+### `stop-port-forward.sh`
+- Encerra os processos de `kubectl port-forward` iniciados por `start.sh`.
+
+```bash
+cd k8s/scripts
+bash stop-port-forward.sh
+```
+
+### `reset.sh`
+- Remove os namespaces `gamestore` e `infrastructure`.
+- Executa `start.sh` em seguida para recriar tudo do zero.
+
+```bash
+cd k8s/scripts
+bash reset.sh
+```
+
+### `rebuild-images.sh`
+- Remove imagens locais `${DOCKER_USER}/*:${IMAGE_TAG}`.
+- Rebuilda imagens dos repositórios irmãos em `${HOME}/code/studies/fiap/fase_2/postech-<service>`.
+- Exibe comandos `docker push` ao final.
+
+```bash
+cd k8s/scripts
+bash rebuild-images.sh
+```
+
+## Exemplo completo (Docker + Kubernetes + kubectl)
+
+### 1) Rebuild das imagens locais
+
+```bash
+cd k8s/scripts
+bash rebuild-images.sh
+```
+
+### 2) Publicar imagens no registry
+
+```bash
+docker push ${DOCKER_USER}/users-api:${IMAGE_TAG}
+docker push ${DOCKER_USER}/catalog-api:${IMAGE_TAG}
+docker push ${DOCKER_USER}/payments-api:${IMAGE_TAG}
+docker push ${DOCKER_USER}/notifications-api:${IMAGE_TAG}
+```
+
+### 3) Deploy no cluster
+
+```bash
+cd k8s/scripts
+bash start.sh
+```
+
+### 4) Validar recursos com kubectl
+
+Importante: para consultar os pods em execucao neste projeto, informe sempre o namespace com `-n`, pois os recursos ficam separados entre `gamestore` e `infrastructure`.
+
+```bash
+kubectl get ns
+kubectl get pods -n infrastructure
+kubectl get pods -n gamestore
+kubectl get svc -n gamestore
+```
+
+### 5) Ver logs de uma API
+
+```bash
+kubectl logs -n gamestore deploy/users-api -f
+```
+
+### 6) Testar APIs
+
+Opcao A (via port-forward do `start.sh`):
+
+```bash
+curl http://127.0.0.1:8081
+curl http://127.0.0.1:8082
+```
+
+Opcao B (via NodePort):
+
+```bash
+curl http://${LOAD_BALANCER_IP}:30081
+curl http://${LOAD_BALANCER_IP}:30082
+curl http://${LOAD_BALANCER_IP}:30083
+curl http://${LOAD_BALANCER_IP}:30084
+```
+
+## Comandos kubectl úteis
+
+```bash
+kubectl describe pod -n gamestore <pod-name>
+kubectl rollout status deployment/users-api -n gamestore
+kubectl get events -n gamestore --sort-by=.metadata.creationTimestamp
+```
 
 ## Estrutura de pastas
 
-```
+```text
 k8s/
-├── env.sh                          # Configurações do ambiente (edite aqui)
-├── namespace.yaml                  # Namespaces: gamestore + infrastructure
-├── infrastructure/
-│   ├── postgresql.yaml             # PostgreSQL + init dos 4 databases
-│   ├── rabbitmq.yaml               # RabbitMQ
-│   └── redis.yaml                  # Redis
-├── users-api/
-│   └── users-api.yaml              # ConfigMap + Secret + Deployment + Service + Ingress
-├── catalog-api/
-│   └── catalog-api.yaml
-├── payments-api/
-│   └── payments-api.yaml
-├── notifications-api/
-│   └── notifications-api.yaml
-└── scripts/
-    └── deploy.sh                   # Deploy completo
+    env.sh
+    namespace.yaml
+    infrastructure/
+        postgresql.yaml
+        rabbitmq.yaml
+        redis.yaml
+    users-api/
+        users-api.yaml
+    catalog-api/
+        catalog-api.yaml
+    payments-api/
+        payments-api.yaml
+    notifications-api/
+        notifications-api.yaml
+    scripts/
+        deploy.sh
+        rebuild-images.sh
+        reset.sh
+        start.sh
+        stop-port-forward.sh
 ```
-
-## Variáveis de Ambiente dos Microsserviços
-
-### UsersAPI
-| Variável | Tipo | Descrição |
-|---|---|---|
-| `ASPNETCORE_ENVIRONMENT` | ConfigMap | Ambiente de execução |
-| `RabbitMQ_Host` | ConfigMap | Host do RabbitMQ |
-| `RabbitMQ_Port` | ConfigMap | Porta AMQP |
-| `JwtSettings_Issuer` | ConfigMap | Issuer do token JWT |
-| `JwtSettings_Audience` | ConfigMap | Audience do token JWT |
-| `JwtSettings_ExpirationMinutes` | ConfigMap | Expiração em minutos |
-| `Redis_Host` | ConfigMap | Host do Redis |
-| `ConnectionStrings_DefaultConnection` | Secret | Connection string PostgreSQL |
-| `JwtSettings_SecretKey` | Secret | Chave secreta JWT |
-| `RabbitMQ_Username` | Secret | Usuário RabbitMQ |
-| `RabbitMQ_Password` | Secret | Senha RabbitMQ |
-
-### CatalogAPI
-| Variável | Tipo | Descrição |
-|---|---|---|
-| `ASPNETCORE_ENVIRONMENT` | ConfigMap | Ambiente de execução |
-| `RabbitMQ_Host` | ConfigMap | Host do RabbitMQ |
-| `RabbitMQ_Port` | ConfigMap | Porta AMQP |
-| `ConnectionStrings_Default` | Secret | Connection string PostgreSQL |
-| `RabbitMQ_Username` | Secret | Usuário RabbitMQ |
-| `RabbitMQ_Password` | Secret | Senha RabbitMQ |
-
-### PaymentsAPI
-| Variável | Tipo | Descrição |
-|---|---|---|
-| `ASPNETCORE_ENVIRONMENT` | ConfigMap | Ambiente de execução |
-| `RabbitMQ_Host` | ConfigMap | Host do RabbitMQ |
-| `RabbitMQ_Port` | ConfigMap | Porta AMQP |
-| `ConnectionStrings_DefaultConnection` | Secret | Connection string PostgreSQL |
-| `RabbitMQ_Username` | Secret | Usuário RabbitMQ |
-| `RabbitMQ_Password` | Secret | Senha RabbitMQ |
-
-### NotificationsAPI
-| Variável | Tipo | Descrição |
-|---|---|---|
-| `ASPNETCORE_ENVIRONMENT` | ConfigMap | Ambiente de execução |
-| `RabbitMQ_Host` | ConfigMap | Host do RabbitMQ |
-| `Brevo_SenderEmail` | ConfigMap | E-mail remetente |
-| `Brevo_SenderName` | ConfigMap | Nome remetente |
-| `RabbitMQ_Username` | Secret | Usuário RabbitMQ |
-| `RabbitMQ_Password` | Secret | Senha RabbitMQ |
-| `Brevo_ApiKey` | Secret | Chave da API Brevo |
-
-## URLs dos Serviços
-
-Após o deploy as URLs seguem o padrão:
-
-| Serviço | URL |
-|---|---|
-| **Users API** | `http://users-api.<LOAD_BALANCER_IP>.nip.io` |
-| **Catalog API** | `http://catalog-api.<LOAD_BALANCER_IP>.nip.io` |
-| **Payments API** | `http://payments-api.<LOAD_BALANCER_IP>.nip.io` |
-| **Notifications API** | `http://notifications-api.<LOAD_BALANCER_IP>.nip.io` |
-| **PostgreSQL** | `postgresql.infrastructure.svc.cluster.local:5432` |
-| **RabbitMQ** | `rabbitmq.infrastructure.svc.cluster.local:5672` |
-| **Redis** | `redis.infrastructure.svc.cluster.local:6379` |
-
-## Repositórios dos Microsserviços
-
-- [postech-users-api](#) - Cadastro, autenticação (JWT) e autorização
-- [postech-catalog-api](#) - CRUD de jogos e início do fluxo de compra
-- [postech-payments-api](#) - Processamento de pagamentos
-- [postech-notifications-api](#) - Envio de e-mails

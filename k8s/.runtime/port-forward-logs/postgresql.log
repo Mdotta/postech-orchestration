@@ -1,0 +1,6 @@
+Unable to listen on port 5432: Listerror: lost connection to pod
+32
+Handling connection for 5432
+error: lost connection to pod
+cp4 127.0.0.1:5432: bind: address already in use unable to create listener: Error listen tcp6 [::1]:5432: bind: address already in use]
+error: unable to listen on any of the requested ports: [{5432 5432}]

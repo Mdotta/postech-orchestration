@@ -4,6 +4,25 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOCKER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
+ENV_FILE="${DOCKER_DIR}/.env"
+COMPOSE_ARGS=( -f "${COMPOSE_FILE}" )
+
+if [ -f "${ENV_FILE}" ]; then
+    COMPOSE_ARGS+=( --env-file "${ENV_FILE}" )
+fi
+
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker-compose)
+else
+    echo "Docker Compose nao encontrado. Instale docker compose ou docker-compose."
+    exit 1
+fi
+
 echo "Limpando ambiente Postech..."
 echo ""
 echo "ATENÇÃO: Este script irá:"
@@ -21,15 +40,15 @@ fi
 
 echo ""
 echo "Parando e removendo containers..."
-docker-compose down
+"${COMPOSE_CMD[@]}" "${COMPOSE_ARGS[@]}" down
 
 echo ""
 echo "Removendo volumes..."
-docker-compose down -v
+"${COMPOSE_CMD[@]}" "${COMPOSE_ARGS[@]}" down -v
 
 echo ""
 echo "Removendo imagens buildadas..."
-docker-compose down --rmi local
+"${COMPOSE_CMD[@]}" "${COMPOSE_ARGS[@]}" down --rmi local
 
 echo ""
 echo "Ambiente limpo com sucesso!"
