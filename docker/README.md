@@ -1,161 +1,125 @@
-# Ambiente Local com Docker - FIAP Cloud Games
+# Ambiente Local k8s-like com Docker Compose
 
-Este diretório sobe apenas a infraestrutura compartilhada para desenvolvimento local:
+Este diretório sobe uma stack local espelhando o ambiente Kubernetes:
 
 - PostgreSQL
-- RabbitMQ (com UI de management)
-
-As APIs podem rodar localmente na sua máquina (fora do Compose) ou ser executadas pelo ambiente da pasta `temp/`.
+- RabbitMQ
+- Redis
+- users-api
+- catalog-api
+- payments-api
+- notifications-api
 
 ## Dependências
 
 - Docker Desktop (ou Docker Engine)
-- Docker Compose (`docker compose` ou `docker-compose`)
-- Bash (para executar os scripts da pasta `scripts/`)
+- Docker Compose
+- Imagens das APIs disponíveis localmente ou em registry acessível pelo Docker local
 
-## Serviços e portas
+Por padrão, as imagens esperadas são:
 
-### PostgreSQL
-- Host local: `localhost`
-- Porta: `5432` (mapeada por `${POSTGRES_PORT}` no `.env`)
-- Databases criados automaticamente no primeiro start:
-  - `postech_users`
-  - `postech_catalog`
-  - `postech_payments`
-  - `postech_notifications`
+- `postech/users-api:local`
+- `postech/catalog-api:local`
+- `postech/payments-api:local`
+- `postech/notifications-api:local`
 
-### RabbitMQ
-- AMQP: `localhost:5672`
-- Management UI: `http://localhost:15672`
-
-## Configuração
-
-Na primeira execução, `scripts/start.sh` cria `.env` a partir de `.env.example` se necessário.
-
-Fluxo recomendado:
+Se você usa outro prefixo/tag:
 
 ```bash
-cd docker
-cp .env.example .env   # se ainda nao existir
+export DOCKER_USER=seu-usuario
+export IMAGE_TAG=sua-tag
 ```
 
-Depois ajuste usuário/senha/portas no `.env` conforme sua necessidade.
+As variaveis sao centralizadas em `postech-orchestration/.env`.
+Se nao existir, o script `scripts/start-complete.sh` cria automaticamente
+o arquivo a partir de `postech-orchestration/.env.example`.
 
-## Scripts e funcionalidades
+## Comandos principais
 
-Todos os scripts devem ser executados a partir da pasta `docker/`.
-
-### `scripts/start.sh`
-Sobe a infraestrutura em background (`docker-compose up -d`) e mostra status.
-
-```bash
-cd docker
-bash scripts/start.sh
-```
-
-### `scripts/stop.sh`
-Para e remove os containers (mantendo volumes e dados).
+### Subir tudo
 
 ```bash
-cd docker
-bash scripts/stop.sh
-```
-
-### `scripts/restart.sh`
-Reinicia os serviços já em execução.
-
-```bash
-cd docker
-bash scripts/restart.sh
-```
-
-### `scripts/logs.sh [servico]`
-Mostra logs em tempo real de todos os serviços ou de um serviço específico.
-
-```bash
-cd docker
-bash scripts/logs.sh
-bash scripts/logs.sh postgres
-bash scripts/logs.sh rabbitmq
-```
-
-### `scripts/build.sh [servico]`
-Executa `docker-compose build --no-cache`. Neste compose atual (infra com imagens oficiais), é útil principalmente para padronizar fluxo de rebuild.
-
-```bash
-cd docker
-bash scripts/build.sh
-bash scripts/build.sh rabbitmq
-```
-
-### `scripts/status.sh`
-Exibe `docker-compose ps` e tenta consultar health dos containers.
-
-```bash
-cd docker
-bash scripts/status.sh
-```
-
-### `scripts/clean.sh`
-Limpa completamente o ambiente (containers, volumes e imagens locais do compose).
-
-```bash
-cd docker
-bash scripts/clean.sh
-```
-
-## Exemplos com comandos Docker Compose
-
-### Subir infraestrutura
-
-```bash
-cd docker
+cd temp
 docker compose up -d
+```
+
+Ou usando o script (recomendado):
+
+```bash
+cd temp
+bash scripts/start-complete.sh
 ```
 
 ### Ver status
 
 ```bash
-cd docker
+cd temp
 docker compose ps
 ```
 
-### Acompanhar logs do RabbitMQ
+### Ver logs
 
 ```bash
-cd docker
-docker compose logs -f rabbitmq
+cd temp
+docker compose logs -f users-api
 ```
 
-### Derrubar mantendo dados
+### Parar ambiente
 
 ```bash
-cd docker
+cd temp
 docker compose down
 ```
 
-### Derrubar removendo volumes
+### Reset completo (remove volumes)
 
 ```bash
-cd docker
+cd temp
 docker compose down -v
 ```
 
-## Strings de conexão de referência
+## Endpoints
 
-### PostgreSQL
+### APIs
 
-```text
-Host=localhost;Port=5432;Database=postech_users;Username=<POSTGRES_USER>;Password=<POSTGRES_PASSWORD>
-```
+- Users: `http://localhost:8081`
+- Catalog: `http://localhost:8082`
+- Payments: `http://localhost:8083`
+- Notifications: `http://localhost:8084`
 
-### RabbitMQ
+Rotas Scalar (quando habilitadas na API):
 
-```text
-amqp://<RABBITMQ_USER>:<RABBITMQ_PASSWORD>@localhost:5672
+- Users: `http://localhost:8081/scalar/v1`
+- Catalog: `http://localhost:8082/scalar/v1`
+- Payments: `http://localhost:8083/scalar/v1`
+- Notifications: `http://localhost:8084/scalar/v1`
+
+### Infra
+
+- PostgreSQL: `localhost:5432`
+- RabbitMQ AMQP: `localhost:5672`
+- RabbitMQ UI: `http://localhost:15672`
+- Redis: `localhost:6379`
+
+## Exemplo de uso integrado
+
+Fluxo comum para validar imagens e stack local:
+
+```bash
+# 1) (Opcional) build de imagens no fluxo k8s
+cd ../k8s/scripts
+bash rebuild-images.sh
+
+# 2) subir stack local k8s-like
+cd ../../temp
+docker compose up -d
+
+# 3) validar containers e logs
+docker compose ps
+docker compose logs -f payments-api
 ```
 
 ## Observações
 
-- O script SQL `init-scripts/01-init-databases.sql` roda apenas na primeira inicialização do volume do PostgreSQL.
-- Para recriar bancos do zero, use `docker compose down -v` e suba novamente.
+- Os aliases de rede internos simulam DNS de Kubernetes (`*.infrastructure.svc.cluster.local`).
+- Isso permite reaproveitar as mesmas variáveis de host usadas nos manifests do cluster.
