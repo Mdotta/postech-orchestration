@@ -1,3 +1,2 @@
 Forwarding from 127.0.0.1:8084 -> 80
 Forwarding from [::1]:8084 -> 80
-error: lost connection to pod
