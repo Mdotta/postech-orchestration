@@ -3,3 +3,4 @@ Forwarding from [::1]:8082 -> 8080
 Handling connection for 8082
 Handling connection for 8082
 Handling connection for 8082
+error: lost connection to pod
