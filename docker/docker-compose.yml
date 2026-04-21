@@ -122,6 +122,8 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
@@ -131,6 +133,7 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgresql.infrastructure.svc.cluster.local;Port=5432;Database=postech_catalog;Username=postech_admin;Password=postech_dev_password
       MongoDB__ConnectionString: mongodb://postech_admin:postech_dev_password@mongodb.infrastructure.svc.cluster.local:27017
       MongoDB__DatabaseName: postech_catalog
+      Redis__ConnectionString: redis.infrastructure.svc.cluster.local:6379
       RabbitMQ__Username: postech_user
       RabbitMQ__Password: postech_rabbit_password
     ports:
