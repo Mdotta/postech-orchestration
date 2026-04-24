@@ -34,10 +34,21 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 API_NAME="${API_NAME:-postech-gateway}"
 STAGE_NAME="${STAGE_NAME:-prod}"
 
-log()  { echo "[$(date '+%H:%M:%S')] $*"; }
-ok()   { echo "[$(date '+%H:%M:%S')] ✅ $*"; }
-warn() { echo "[$(date '+%H:%M:%S')] ⚠️  $*"; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/deployment.env"
+
+log()  { echo "[$(date '+%H:%M:%S')] $*" >&2; }
+ok()   { echo "[$(date '+%H:%M:%S')] ✅ $*" >&2; }
+warn() { echo "[$(date '+%H:%M:%S')] ⚠️  $*" >&2; }
 fail() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
+
+set_env_var() {
+  local KEY="$1" VAL="$2"
+  touch "$ENV_FILE"
+  grep -v "^${KEY}=" "$ENV_FILE" > "${ENV_FILE}.tmp" 2>/dev/null || true
+  echo "export ${KEY}='${VAL}'" >> "${ENV_FILE}.tmp"
+  mv "${ENV_FILE}.tmp" "$ENV_FILE"
+}
 
 command -v aws &>/dev/null || fail "aws CLI is not installed"
 
@@ -128,18 +139,10 @@ fi
 create_or_update_integration() {
   local LABEL="$1"
   local TARGET_IP="$2"
-  local TAG_KEY="$3"
 
-  [[ -z "$TARGET_IP" ]] && { warn "Skipping integration for $LABEL (no IP)."; echo ""; return; }
+  [[ -z "$TARGET_IP" || "$TARGET_IP" == "None" ]] && { warn "Skipping integration for $LABEL (no IP)."; echo ""; return; }
 
   local EXISTING_ID
-  EXISTING_ID=$(aws apigatewayv2 get-integrations \
-    --api-id "$API_ID" \
-    --region "$AWS_REGION" \
-    --query "Items[?contains(IntegrationUri, '$TARGET_IP') || Tags.$TAG_KEY != null].IntegrationId | [0]" \
-    --output text 2>/dev/null) || EXISTING_ID=""
-
-  # Fall back: look by description tag stored in RequestParameters
   EXISTING_ID=$(aws apigatewayv2 get-integrations \
     --api-id "$API_ID" \
     --region "$AWS_REGION" \
@@ -174,8 +177,8 @@ create_or_update_integration() {
 }
 
 log "Setting up integrations..."
-USERS_INTEGRATION_ID=$(create_or_update_integration "users-api" "$USERS_IP" "users")
-CATALOG_INTEGRATION_ID=$(create_or_update_integration "catalog-api" "$CATALOG_IP" "catalog")
+USERS_INTEGRATION_ID=$(create_or_update_integration "users-api" "$USERS_IP")
+CATALOG_INTEGRATION_ID=$(create_or_update_integration "catalog-api" "$CATALOG_IP")
 
 # =============================================================================
 # Step 4: Create routes
@@ -185,7 +188,7 @@ create_route_if_not_exists() {
   local AUTH_TYPE="$2"
   local INTEGRATION_ID="$3"
 
-  [[ -z "$INTEGRATION_ID" ]] && { warn "Skipping route '$ROUTE_KEY' — no integration available."; return; }
+  [[ -z "$INTEGRATION_ID" || "$INTEGRATION_ID" == "None" ]] && { warn "Skipping route '$ROUTE_KEY' — no integration available."; return; }
 
   local EXISTING
   EXISTING=$(aws apigatewayv2 get-routes \
@@ -217,21 +220,44 @@ create_route_if_not_exists() {
   ok "Route created: $ROUTE_KEY ($AUTH_TYPE)"
 }
 
+delete_route_if_exists() {
+  local ROUTE_KEY="$1"
+  local ROUTE_ID
+
+  ROUTE_ID=$(aws apigatewayv2 get-routes \
+    --api-id "$API_ID" \
+    --region "$AWS_REGION" \
+    --query "Items[?RouteKey=='$ROUTE_KEY'].RouteId" \
+    --output text)
+
+  if [[ -n "$ROUTE_ID" && "$ROUTE_ID" != "None" ]]; then
+    aws apigatewayv2 delete-route \
+      --api-id "$API_ID" \
+      --route-id "$ROUTE_ID" \
+      --region "$AWS_REGION" > /dev/null
+    ok "Removed legacy route: $ROUTE_KEY"
+  fi
+}
+
 log "Creating routes..."
 
+# Remove legacy users-api route keys with /api prefix
+delete_route_if_exists "GET /api/users/{proxy+}"
+delete_route_if_exists "PATCH /api/users/{proxy+}"
+
 # --- users-api routes ---------------------------------------------------------
-# $default catches: POST /api/auth/*, GET /health, scalar/openapi docs
+# $default catches: POST /auth/*, GET /health, scalar/openapi docs
 create_route_if_not_exists '$default'                "NONE" "$USERS_INTEGRATION_ID"
-create_route_if_not_exists "GET /api/users/{proxy+}" "JWT"  "$USERS_INTEGRATION_ID"
-create_route_if_not_exists "PATCH /api/users/{proxy+}" "JWT" "$USERS_INTEGRATION_ID"
+create_route_if_not_exists "GET /users/{proxy+}" "JWT"  "$USERS_INTEGRATION_ID"
+create_route_if_not_exists "PATCH /users/{proxy+}" "JWT" "$USERS_INTEGRATION_ID"
 
 # --- catalog-api routes -------------------------------------------------------
-create_route_if_not_exists "GET /api/game"                  "NONE" "$CATALOG_INTEGRATION_ID"
-create_route_if_not_exists "POST /api/game"                 "JWT"  "$CATALOG_INTEGRATION_ID"
-create_route_if_not_exists "GET /api/game/{proxy+}"         "JWT"  "$CATALOG_INTEGRATION_ID"
-create_route_if_not_exists "POST /api/game/{proxy+}"        "JWT"  "$CATALOG_INTEGRATION_ID"
-create_route_if_not_exists "PATCH /api/game/{proxy+}"       "JWT"  "$CATALOG_INTEGRATION_ID"
-create_route_if_not_exists "DELETE /api/game/{proxy+}"      "JWT"  "$CATALOG_INTEGRATION_ID"
+create_route_if_not_exists "GET /game"                  "NONE" "$CATALOG_INTEGRATION_ID"
+create_route_if_not_exists "POST /game"                 "JWT"  "$CATALOG_INTEGRATION_ID"
+create_route_if_not_exists "GET /game/{proxy+}"         "JWT"  "$CATALOG_INTEGRATION_ID"
+create_route_if_not_exists "POST /game/{proxy+}"        "JWT"  "$CATALOG_INTEGRATION_ID"
+create_route_if_not_exists "PATCH /game/{proxy+}"       "JWT"  "$CATALOG_INTEGRATION_ID"
+create_route_if_not_exists "DELETE /game/{proxy+}"      "JWT"  "$CATALOG_INTEGRATION_ID"
 
 # =============================================================================
 # Step 5: Create stage
@@ -264,6 +290,10 @@ API_ENDPOINT=$(aws apigatewayv2 get-api \
 
 INVOKE_URL="$API_ENDPOINT/$STAGE_NAME"
 
+# --- Save deployment variables -----------------------------------------------
+set_env_var "API_GATEWAY_ID"       "$API_ID"
+set_env_var "API_GATEWAY_ENDPOINT" "$INVOKE_URL"
+
 echo ""
 echo "🚀 API Gateway setup complete!"
 echo ""
@@ -280,15 +310,18 @@ echo "  # Health check (public)"
 echo "  curl $INVOKE_URL/health"
 echo ""
 echo "  # Login"
-echo "  TOKEN=\$(curl -s -X POST $INVOKE_URL/api/auth/login \\"
+echo "  TOKEN=\$(curl -s -X POST $INVOKE_URL/auth/login \\" 
 echo "    -H 'Content-Type: application/json' \\"
 echo "    -d '{\"email\":\"test@test.com\",\"password\":\"Test@1234\"}' | jq -r '.token')"
 echo ""
 echo "  # List games (public)"
-echo "  curl $INVOKE_URL/api/game"
+echo "  curl $INVOKE_URL/game"
 echo ""
 echo "  # Place order (protected)"
-echo "  curl -X POST $INVOKE_URL/api/game/create-order \\"
-echo "    -H \"Authorization: Bearer \$TOKEN\" \\"
-echo "    -H 'Content-Type: application/json' \\"
-echo "    -d '{\"gameId\":\"<game-id>\"}'"
+echo "  curl -X POST $INVOKE_URL/game/create-order \\"
+  echo "    -H \"Authorization: Bearer \$TOKEN\" \\"
+  echo "    -H 'Content-Type: application/json' \\"
+  echo "    -d '{\"gameId\":\"<game-id>\"}'"
+echo ""
+echo "📋 Deployment variables saved → $ENV_FILE"
+echo "   source $ENV_FILE"

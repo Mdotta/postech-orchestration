@@ -21,9 +21,21 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 RDS_INSTANCE_ID="${RDS_INSTANCE_ID:-postech-db}"
 EC2_SG_NAME="${EC2_SG_NAME:-postech-api-sg}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/deployment.env"
+
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()   { echo "[$(date '+%H:%M:%S')] ✅ $*"; }
+warn() { echo "[$(date '+%H:%M:%S')] ⚠️  $*"; }
 fail() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
+
+set_env_var() {
+  local KEY="$1" VAL="$2"
+  touch "$ENV_FILE"
+  grep -v "^${KEY}=" "$ENV_FILE" > "${ENV_FILE}.tmp" 2>/dev/null || true
+  echo "export ${KEY}='${VAL}'" >> "${ENV_FILE}.tmp"
+  mv "${ENV_FILE}.tmp" "$ENV_FILE"
+}
 
 command -v aws &>/dev/null || fail "aws CLI is not installed"
 
@@ -73,16 +85,25 @@ log "Fetching RDS security group for '$RDS_INSTANCE_ID'..."
 RDS_SG_ID=$(aws rds describe-db-instances \
   --db-instance-identifier "$RDS_INSTANCE_ID" \
   --region "$AWS_REGION" \
-  --query 'DBInstances[0].VpcSecurityGroups[0].VpcSecurityGroupId' --output text)
+  --query 'DBInstances[0].VpcSecurityGroups[0].VpcSecurityGroupId' --output text \
+  2>/dev/null) || RDS_SG_ID=""
 
-[[ -n "$RDS_SG_ID" && "$RDS_SG_ID" != "None" ]] || fail "Could not find security group for RDS instance '$RDS_INSTANCE_ID'"
-log "RDS Security Group ID: $RDS_SG_ID"
+if [[ -n "$RDS_SG_ID" && "$RDS_SG_ID" != "None" ]]; then
+  log "RDS Security Group ID: $RDS_SG_ID"
+  aws ec2 authorize-security-group-ingress \
+    --group-id "$RDS_SG_ID" \
+    --protocol tcp --port 5432 \
+    --source-group "$EC2_SG_ID" \
+    --region "$AWS_REGION" 2>/dev/null && ok "EC2 → RDS (5432) rule added." || log "EC2 → RDS (5432) rule already exists, skipping."
+else
+  warn "RDS instance '$RDS_INSTANCE_ID' not found — skipping RDS SG rule."
+  warn "Re-run this script after creating the RDS instance, or the rule will be added automatically by deploy-ec2.sh."
+  RDS_SG_ID="(not found)"
+fi
 
-aws ec2 authorize-security-group-ingress \
-  --group-id "$RDS_SG_ID" \
-  --protocol tcp --port 5432 \
-  --source-group "$EC2_SG_ID" \
-  --region "$AWS_REGION" 2>/dev/null && ok "EC2 → RDS (5432) rule added." || log "EC2 → RDS (5432) rule already exists, skipping."
+# --- Save deployment variables -----------------------------------------------
+set_env_var "EC2_SG_NAME" "$EC2_SG_NAME"
+set_env_var "EC2_SG_ID"   "$EC2_SG_ID"
 
 # --- Done --------------------------------------------------------------------
 echo ""
@@ -90,3 +111,6 @@ echo "🚀 Security groups ready!"
 echo "   EC2 SG : $EC2_SG_ID ($EC2_SG_NAME)"
 echo "   RDS SG : $RDS_SG_ID"
 echo "   Run the service-specific deploy-ec2.sh to launch each EC2 instance."
+echo ""
+echo "📋 Deployment variables saved → $ENV_FILE"
+echo "   source $ENV_FILE"

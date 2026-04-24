@@ -26,10 +26,21 @@ set -euo pipefail
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:?❌ AWS_ACCOUNT_ID is not set}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/deployment.env"
+
 # All log/ok/fail write to stderr so they never pollute function return values
 log()  { echo "[$(date '+%H:%M:%S')] $*" >&2; }
 ok()   { echo "[$(date '+%H:%M:%S')] ✅ $*" >&2; }
 fail() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
+
+set_env_var() {
+  local KEY="$1" VAL="$2"
+  touch "$ENV_FILE"
+  grep -v "^${KEY}=" "$ENV_FILE" > "${ENV_FILE}.tmp" 2>/dev/null || true
+  echo "export ${KEY}='${VAL}'" >> "${ENV_FILE}.tmp"
+  mv "${ENV_FILE}.tmp" "$ENV_FILE"
+}
 
 command -v aws &>/dev/null || fail "aws CLI is not installed"
 command -v jq  &>/dev/null || fail "jq is not installed"
@@ -235,6 +246,14 @@ subscribe_sqs_to_sns "$TOPIC_ORDER_PROCESSED" "$QUEUE_NOTIFICATIONS_ORDER" "noti
 subscribe_sqs_to_sns "$TOPIC_ORDER_PROCESSED" "$QUEUE_CATALOG_ORDER"       "catalog-order-processed"
 
 # =============================================================================
+# Save deployment variables
+# =============================================================================
+set_env_var "USERS_SNS_TOPIC_ARN"    "$TOPIC_USER_CREATED"
+set_env_var "CATALOG_SNS_TOPIC_ARN"  "$TOPIC_ORDER_CREATED"
+set_env_var "CATALOG_SQS_QUEUE_URL"  "$QUEUE_CATALOG_ORDER"
+set_env_var "PAYMENTS_SQS_QUEUE_URL" "$QUEUE_PAYMENTS_ORDER"
+
+# =============================================================================
 # Done
 # =============================================================================
 echo ""
@@ -269,6 +288,9 @@ echo "      AWS__SqsQueueUrl=$SQS_BASE/payments-order-created"
 echo "      AWS__SqsQueueUrl=$SQS_BASE/catalog-order-processed"
 echo ""
 echo "   3. Update users-api SNS_TOPIC_ARN → $TOPIC_USER_CREATED"
+echo ""
+echo "📋 Deployment variables saved → $ENV_FILE"
+echo "   source $ENV_FILE"
 echo ""
 echo "📋 Verify a message arrived after registering a user:"
 echo "   aws sqs receive-message \\"

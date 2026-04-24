@@ -19,10 +19,21 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 POOL_NAME="${POOL_NAME:-postech-users-pool}"
 CLIENT_NAME="${CLIENT_NAME:-postech-api-client}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/deployment.env"
+
 # --- Helpers -----------------------------------------------------------------
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()   { echo "[$(date '+%H:%M:%S')] ✅ $*"; }
 fail() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
+
+set_env_var() {
+  local KEY="$1" VAL="$2"
+  touch "$ENV_FILE"
+  grep -v "^${KEY}=" "$ENV_FILE" > "${ENV_FILE}.tmp" 2>/dev/null || true
+  echo "export ${KEY}='${VAL}'" >> "${ENV_FILE}.tmp"
+  mv "${ENV_FILE}.tmp" "$ENV_FILE"
+}
 
 # --- Checks ------------------------------------------------------------------
 command -v aws &>/dev/null || fail "aws CLI is not installed"
@@ -129,3 +140,28 @@ create_group_if_not_exists() {
     ok "Group '$GROUP_NAME' created"
   fi
 }
+
+create_group_if_not_exists "Admin"    "Full administrative access"
+create_group_if_not_exists "Customer" "Standard customer access"
+
+# --- Step 6: Save deployment variables ---------------------------------------
+JWT_ISSUER="https://cognito-idp.$AWS_REGION.amazonaws.com/$USER_POOL_ID"
+JWT_AUDIENCE="$CLIENT_ID"
+
+set_env_var "COGNITO_USER_POOL_ID" "$USER_POOL_ID"
+set_env_var "COGNITO_CLIENT_ID"    "$CLIENT_ID"
+set_env_var "JWT_ISSUER"           "$JWT_ISSUER"
+set_env_var "JWT_AUDIENCE"         "$JWT_AUDIENCE"
+
+# --- Done --------------------------------------------------------------------
+echo ""
+echo "🚀 Cognito setup complete!"
+echo ""
+echo "   User Pool ID : $USER_POOL_ID"
+echo "   Client ID    : $CLIENT_ID"
+echo "   JWT Issuer   : $JWT_ISSUER"
+echo ""
+echo "📋 Deployment variables saved → $ENV_FILE"
+echo "   source $ENV_FILE"
+echo ""
+echo "📋 Next: run setup-api-gateway.sh (JWT_ISSUER and JWT_AUDIENCE will be read from deployment.env)"
