@@ -141,8 +141,8 @@ create_group_if_not_exists() {
   fi
 }
 
-create_group_if_not_exists "Admin"    "Full administrative access"
-create_group_if_not_exists "Customer" "Standard customer access"
+create_group_if_not_exists "Administrator" "Full administrative access"
+create_group_if_not_exists "User"          "Standard user access"
 
 # --- Step 6: Save deployment variables ---------------------------------------
 JWT_ISSUER="https://cognito-idp.$AWS_REGION.amazonaws.com/$USER_POOL_ID"

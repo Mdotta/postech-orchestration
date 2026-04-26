@@ -155,7 +155,7 @@ create_or_update_integration() {
       --api-id "$API_ID" \
       --integration-id "$EXISTING_ID" \
       --integration-uri "http://$TARGET_IP" \
-      --request-parameters '{"overwrite:path": "$request.path"}' \
+      --request-parameters '{"overwrite:path": "$request.path","append:header.X-User-Id":"$context.authorizer.jwt.claims.sub","append:header.X-User-Name":"$context.authorizer.jwt.claims.email"}' \
       --region "$AWS_REGION" > /dev/null
     ok "Integration for $LABEL updated → http://$TARGET_IP"
     echo "$EXISTING_ID"
@@ -169,7 +169,7 @@ create_or_update_integration() {
       --integration-method ANY \
       --payload-format-version "1.0" \
       --description "$LABEL" \
-      --request-parameters '{"overwrite:path": "$request.path"}' \
+      --request-parameters '{"overwrite:path": "$request.path","append:header.X-User-Id":"$context.authorizer.jwt.claims.sub","append:header.X-User-Name":"$context.authorizer.jwt.claims.email"}' \
       --query 'IntegrationId' --output text)
     ok "Integration for $LABEL created: $INT_ID → http://$TARGET_IP"
     echo "$INT_ID"
