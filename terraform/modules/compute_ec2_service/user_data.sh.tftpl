@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+yum update -y
+yum install -y docker aws-cli
+systemctl start docker
+systemctl enable docker
+
+aws ecr get-login-password --region "${aws_region}" | docker login --username AWS --password-stdin "${ecr_registry}"
+
+docker pull "${image}"
+
+docker rm -f "${container_name}" 2>/dev/null || true
+
+docker run -d \
+  --name "${container_name}" \
+  --restart unless-stopped \
+  -p ${container_port}:${container_port} \
+  -e ASPNETCORE_URLS="http://+:${container_port}" \
+%{ for k, v in env ~}
+  -e "${k}=${v}" \
+%{ endfor ~}
+  "${image}"
+
