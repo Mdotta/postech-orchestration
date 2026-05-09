@@ -63,6 +63,26 @@ services:
         aliases:
           - redis.infrastructure.svc.cluster.local
 
+  mongodb:
+    image: mongo:7-jammy
+    container_name: postech-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: postech_admin
+      MONGO_INITDB_ROOT_PASSWORD: postech_dev_password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      gamestore-net:
+        aliases:
+          - mongodb.infrastructure.svc.cluster.local
+
   users-api:
     image: ${DOCKER_USER:-postech}/users-api:${IMAGE_TAG:-local}
     container_name: postech-users-api
@@ -100,6 +120,10 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
@@ -107,6 +131,9 @@ services:
       RabbitMQ__Port: "5672"
       RabbitMQ__VirtualHost: "/"
       ConnectionStrings__DefaultConnection: Host=postgresql.infrastructure.svc.cluster.local;Port=5432;Database=postech_catalog;Username=postech_admin;Password=postech_dev_password
+      MongoDB__ConnectionString: mongodb://postech_admin:postech_dev_password@mongodb.infrastructure.svc.cluster.local:27017
+      MongoDB__DatabaseName: postech_catalog
+      Redis__ConnectionString: redis.infrastructure.svc.cluster.local:6379
       RabbitMQ__Username: postech_user
       RabbitMQ__Password: postech_rabbit_password
     ports:
@@ -142,6 +169,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:80
@@ -153,6 +182,8 @@ services:
       RabbitMQ__Username: postech_user
       RabbitMQ__Password: postech_rabbit_password
       Brevo__ApiKey: ${BREVO_API_KEY:-CHANGE_TO_YOUR_BREVO_API_KEY}
+      MongoDB__ConnectionString: mongodb://postech_admin:postech_dev_password@mongodb.infrastructure.svc.cluster.local:27017
+      MongoDB__DatabaseName: postech_notifications
     ports:
       - "8084:80"
     networks:
@@ -162,6 +193,7 @@ volumes:
   postgresql_data:
   rabbitmq_data:
   redis_data:
+  mongodb_data:
 
 networks:
   gamestore-net:
