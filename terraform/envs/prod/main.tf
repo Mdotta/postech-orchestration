@@ -57,6 +57,7 @@ module "users_service" {
 
   container_port = 80
   health_path    = "/health"
+  log_group_name = module.cloudwatch.log_group_names["users-api"]
 
   env = {
     "ConnectionStrings__DefaultConnection" = module.rds.connection_string
@@ -84,6 +85,7 @@ module "catalog_service" {
 
   container_port = 80
   health_path    = "/health"
+  log_group_name = module.cloudwatch.log_group_names["catalog-api"]
 
   env = {
     "ConnectionStrings__DefaultConnection" = module.rds.connection_string
@@ -109,6 +111,7 @@ module "payments_service" {
 
   container_port = 80
   health_path    = "/health"
+  log_group_name = module.cloudwatch.log_group_names["payments-api"]
 
   env = {
     "ConnectionStrings__DefaultConnection" = module.rds.connection_string
@@ -130,3 +133,29 @@ module "apigw" {
   catalog_integration_uri = "http://${module.catalog_service.eip_public_ip}"
 }
 
+module "notification_user_created_lambda" {
+  source        = "../../modules/lambda_notification"
+  name_prefix   = var.name_prefix
+  event_type    = "user-created"
+  ecr_repo_url  = module.ecr.notifications_lambda_repo_url
+  image_tag     = var.notifications_image_tag
+  sqs_queue_arn = module.messaging.notifications_user_queue_arn
+  lambda_role_name = var.lambda_role_name
+}
+
+module "notification_order_processed_lambda" {
+  source           = "../../modules/lambda_notification"
+  name_prefix      = var.name_prefix
+  event_type       = "order-processed"
+  ecr_repo_url     = module.ecr.notifications_lambda_repo_url
+  image_tag        = var.notifications_image_tag
+  sqs_queue_arn    = module.messaging.notifications_order_queue_arn
+  lambda_role_name = var.lambda_role_name
+}
+
+module "cloudwatch" {
+  source         = "../../modules/cloudwatch"
+  name_prefix    = var.name_prefix
+  aws_region     = var.aws_region
+  service_names  = ["users-api", "catalog-api", "payments-api"]
+}

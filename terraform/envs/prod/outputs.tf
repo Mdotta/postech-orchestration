@@ -53,3 +53,26 @@ output "api_gateway_invoke_url" {
   value = module.apigw.invoke_url
 }
 
+output "notification_user_created_lambda" {
+  value = module.notification_user_created_lambda.function_name
+}
+
+output "notification_order_processed_lambda" {
+  value = module.notification_order_processed_lambda.function_name
+}
+
+output "cloudwatch_log_group_names" {
+  value       = module.cloudwatch.log_group_names
+  description = "CloudWatch Log Group names per service"
+}
+
+output "cloudwatch_log_group_arns" {
+  value       = module.cloudwatch.log_group_arns
+  description = "CloudWatch Log Group ARNs per service"
+}
+
+output "cloudwatch_logs_policy_arn" {
+  value       = aws_iam_policy.cloudwatch_logs.arn
+  description = "ARN of the CloudWatch Logs IAM policy — attach to LabRole manually if needed"
+}
+

@@ -76,3 +76,15 @@ variable "payments_image_tag" {
   default     = "latest"
 }
 
+variable "notifications_image_tag" {
+  type        = string
+  description = "ECR image tag for notifications Lambda"
+  default     = "latest"
+}
+
+variable "lambda_role_name" {
+  type        = string
+  description = "Name of the existing IAM role for Lambda execution (create once via AWS Console before apply)"
+  default     = "LabRole"
+}
+
