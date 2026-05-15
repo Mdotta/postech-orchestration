@@ -77,3 +77,9 @@ variable "env" {
   default     = {}
 }
 
+variable "log_group_name" {
+  type        = string
+  description = "CloudWatch Log Group name for container logs. Leave empty to skip CloudWatch Agent setup."
+  default     = ""
+}
+

@@ -18,3 +18,11 @@ output "payments_order_created_queue_url" {
   value = "${local.sqs_base}/${aws_sqs_queue.payments_order.name}"
 }
 
+output "notifications_user_queue_arn" {
+  value = aws_sqs_queue.notifications_user.arn
+}
+
+output "notifications_order_queue_arn" {
+  value = aws_sqs_queue.notifications_order.arn
+}
+

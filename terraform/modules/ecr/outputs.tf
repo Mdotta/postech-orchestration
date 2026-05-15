@@ -10,3 +10,7 @@ output "payments_repo_name" {
   value = aws_ecr_repository.payments.name
 }
 
+output "notifications_lambda_repo_url" {
+  value = aws_ecr_repository.notifications_lambda.repository_url
+}
+

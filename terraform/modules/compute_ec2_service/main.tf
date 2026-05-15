@@ -41,6 +41,7 @@ resource "aws_instance" "this" {
     container_name = local.container
     container_port = var.container_port
     env            = var.env
+    log_group_name = var.log_group_name
   })
 
   tags = {
