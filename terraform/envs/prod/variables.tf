@@ -88,3 +88,15 @@ variable "lambda_role_name" {
   default     = "LabRole"
 }
 
+variable "redis_node_type" {
+  type        = string
+  description = "ElastiCache Redis instance class"
+  default     = "cache.t3.micro"
+}
+
+variable "redis_engine_version" {
+  type        = string
+  description = "Redis engine version"
+  default     = "7.0"
+}
+

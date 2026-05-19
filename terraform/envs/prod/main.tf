@@ -41,6 +41,17 @@ module "ecr" {
   name_prefix = var.name_prefix
 }
 
+module "redis" {
+  source         = "../../modules/elasticache_redis"
+  name_prefix    = var.name_prefix
+  aws_region     = var.aws_region
+  vpc_id         = module.network.vpc_id
+  subnet_ids     = module.network.subnet_ids
+  ec2_sg_id      = module.security_groups.ec2_sg_id
+  node_type      = var.redis_node_type
+  engine_version = var.redis_engine_version
+}
+
 module "users_service" {
   source                    = "../../modules/compute_ec2_service"
   aws_region                = var.aws_region
@@ -92,6 +103,7 @@ module "catalog_service" {
     "AWS__Region"                          = var.aws_region
     "AWS__SnsTopicArn"                     = module.messaging.order_created_topic_arn
     "AWS__SqsQueueUrl"                     = module.messaging.catalog_order_processed_queue_url
+    "Redis__ConnectionString"              = module.redis.connection_string
   }
 }
 

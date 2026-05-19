@@ -76,3 +76,8 @@ output "cloudwatch_logs_policy_arn" {
   description = "ARN of the CloudWatch Logs IAM policy — attach to LabRole manually if needed"
 }
 
+output "redis_endpoint" {
+  value       = module.redis.primary_endpoint
+  description = "ElastiCache Redis primary endpoint"
+}
+
