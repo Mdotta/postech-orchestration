@@ -24,6 +24,12 @@ module "rds" {
   rds_sg_id           = module.security_groups.rds_sg_id
 }
 
+module "dynamodb" {
+  source      = "../../modules/dynamodb"
+  aws_region  = var.aws_region
+  name_prefix = var.name_prefix
+}
+
 module "cognito" {
   source      = "../../modules/cognito"
   aws_region  = var.aws_region
@@ -104,6 +110,8 @@ module "catalog_service" {
     "AWS__SnsTopicArn"                     = module.messaging.order_created_topic_arn
     "AWS__SqsQueueUrl"                     = module.messaging.catalog_order_processed_queue_url
     "Redis__ConnectionString"              = module.redis.connection_string
+    "DynamoDB__UseDynamoDB"               = "true"
+    "DynamoDB__TableName"                 = module.dynamodb.catalog_games_table_name
   }
 }
 

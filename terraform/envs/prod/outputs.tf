@@ -76,6 +76,31 @@ output "cloudwatch_logs_policy_arn" {
   description = "ARN of the CloudWatch Logs IAM policy — attach to LabRole manually if needed"
 }
 
+output "dynamodb_policy_arn" {
+  value       = aws_iam_policy.dynamodb.arn
+  description = "ARN of the DynamoDB IAM policy — attach to LabRole/LabInstanceProfile manually if needed"
+}
+
+output "dynamodb_catalog_games_table_name" {
+  value       = module.dynamodb.catalog_games_table_name
+  description = "DynamoDB table for catalog games"
+}
+
+output "dynamodb_catalog_games_table_arn" {
+  value       = module.dynamodb.catalog_games_table_arn
+  description = "DynamoDB table ARN for catalog games"
+}
+
+output "dynamodb_notifications_event_logs_table_name" {
+  value       = module.dynamodb.notifications_event_logs_table_name
+  description = "DynamoDB table for notifications event logs"
+}
+
+output "dynamodb_notifications_event_logs_table_arn" {
+  value       = module.dynamodb.notifications_event_logs_table_arn
+  description = "DynamoDB table ARN for notifications event logs"
+}
+
 output "redis_endpoint" {
   value       = module.redis.primary_endpoint
   description = "ElastiCache Redis primary endpoint"
