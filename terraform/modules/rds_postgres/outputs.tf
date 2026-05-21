@@ -11,7 +11,7 @@ output "security_group_id" {
 }
 
 output "connection_string" {
-  value     = "Host=${aws_db_instance.this.address};Port=${aws_db_instance.this.port};Database=${var.db_name};Username=${var.db_username};Password=${var.db_password}"
+  value     = "Host=${aws_db_instance.this.address};Port=${aws_db_instance.this.port};Database=${var.db_name};Username=${var.db_username};Password=${var.db_password};SSL Mode=Require;Trust Server Certificate=true;GssEncryptionMode=Disable"
   sensitive = true
 }
 
