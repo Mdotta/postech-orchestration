@@ -101,6 +101,16 @@ output "dynamodb_notifications_event_logs_table_arn" {
   description = "DynamoDB table ARN for notifications event logs"
 }
 
+output "grafana_url" {
+  value       = module.monitoring.grafana_url
+  description = "Grafana dashboard URL (login: admin / admin)"
+}
+
+output "prometheus_url" {
+  value       = module.monitoring.prometheus_url
+  description = "Prometheus UI URL"
+}
+
 output "redis_endpoint" {
   value       = module.redis.primary_endpoint
   description = "ElastiCache Redis primary endpoint"

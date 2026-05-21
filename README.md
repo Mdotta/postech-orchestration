@@ -1,102 +1,95 @@
 # postech-orchestration
 
-Orquestracao de ambiente para o projeto FIAP Cloud Games.
+Orquestracao de ambiente para o projeto FIAP Cloud Games — Tech Challenge 2026.
 
-Este repositorio concentra os recursos para executar o ecossistema em tres modos:
+Este repositorio concentra os recursos para executar o ecossistema em quatro modos:
 
-- Infra local com Docker (`docker/`)
-- Deploy em cluster Kubernetes (`k8s/`)
-- Stack local k8s-like completa com Docker Compose (`temp/`)
+| Modo | Diretorio | Quando usar |
+|------|-----------|-------------|
+| **Infra local (Docker)** | `docker/` | Desenvolvimento das APIs — sobe PostgreSQL, RabbitMQ, MongoDB, Redis |
+| **Deploy Kubernetes** | `k8s/` | Validacao em cluster com manifests |
+| **Stack completa local** | `temp/` | Ambiente k8s-like completo via Docker Compose (todas as APIs + infra) |
+| **Deploy AWS (Terraform)** | `terraform/` | **Producao na AWS** — EC2, RDS, DynamoDB, ElastiCache, SNS/SQS, Cognito, API Gateway, Lambda, CloudWatch, Grafana/Prometheus |
+
+> **Nota:** O ambiente de desenvolvimento e testes utilizou o **AWS Academy Learner Lab**.
 
 ## Dependencias gerais
 
 - Docker Desktop (ou Docker Engine + Compose)
-- kubectl
-- Cluster Kubernetes acessivel (Minikube, Kind, Docker Desktop Kubernetes ou cluster remoto)
-- envsubst (gettext)
+- [Terraform >= 1.6](https://developer.hashicorp.com/terraform/downloads) (para deploy AWS)
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (para deploy AWS)
+- kubectl (para Kubernetes)
+- envsubst (para Kubernetes — pacote `gettext`)
 - Bash
 
 ## Estrutura
 
 ```text
 postech-orchestration/
-  docker/   # Infra local: PostgreSQL + RabbitMQ
-  k8s/      # Manifests e scripts de deploy Kubernetes
-  temp/     # Stack completa k8s-like em Docker Compose
+  docker/       # Infra local: PostgreSQL + RabbitMQ + MongoDB + Redis
+    init-scripts/      # Scripts de inicializacao de bancos
+  k8s/          # Manifests e scripts de deploy Kubernetes
+    infrastructure/    # postgresql, rabbitmq, redis
+    users-api/ catalog-api/ payments-api/ notifications-api/
+    scripts/           # start.sh, deploy.sh, rebuild-images.sh
+  terraform/    # Infra como codigo (AWS)
+    modules/           # compute_ec2_service, compute_monitoring, rds_postgres,
+    envs/prod/         #   dynamodb, elasticache_redis, cognito, messaging, etc.
+                       # Configuracao do ambiente de producao
+  temp/         # Stack completa k8s-like em Docker Compose
 ```
 
 ## Fluxos recomendados
 
-## 1) Infra local para desenvolvimento de APIs
-
-Use quando as APIs rodam localmente na sua maquina e voce so precisa de banco e broker.
+### 1) Desenvolvimento local de APIs
 
 ```bash
 cd docker
-bash scripts/start.sh
+docker compose up -d
 ```
 
-Documentacao detalhada: `docker/README.md`.
+Sobe PostgreSQL, RabbitMQ, MongoDB e Redis. As APIs rodam localmente via `dotnet run`.
 
-## 2) Deploy no Kubernetes
+Documentacao: `docker/README.md`.
 
-Use quando quer validar o ambiente no cluster com manifests.
+### 2) Deploy no Kubernetes
 
 ```bash
 cd k8s/scripts
 bash start.sh
 ```
 
-O script realiza deploy e abre port-forwards locais das APIs.
+Documentacao: `k8s/README.md`.
 
-Documentacao detalhada: `k8s/README.md`.
-
-## 3) Ambiente completo local (k8s-like)
-
-Use quando quer rodar toda a stack localmente via Compose.
+### 3) Ambiente completo local (k8s-like)
 
 ```bash
 cd temp
 docker compose up -d
 ```
 
-Documentacao detalhada: `temp/README.md`.
+Documentacao: `temp/README.md`.
 
-## Exemplo completo com Docker + Kubernetes + kubectl
-
-```bash
-# 1) Rebuild das imagens dos microsservicos (fluxo k8s)
-cd k8s/scripts
-bash rebuild-images.sh
-
-# 2) Push para o registry
-# (ajuste DOCKER_USER e IMAGE_TAG em k8s/env.sh)
-docker push ${DOCKER_USER}/users-api:${IMAGE_TAG}
-docker push ${DOCKER_USER}/catalog-api:${IMAGE_TAG}
-docker push ${DOCKER_USER}/payments-api:${IMAGE_TAG}
-docker push ${DOCKER_USER}/notifications-api:${IMAGE_TAG}
-
-# 3) Deploy no cluster
-bash start.sh
-
-# 4) Verificacao via kubectl
-# Para listar pods em execucao, sempre especifique o namespace com -n
-kubectl get ns
-kubectl get pods -n infrastructure
-kubectl get pods -n gamestore
-kubectl get svc -n gamestore
-
-# 5) Logs
-kubectl logs -n gamestore deploy/users-api -f
-```
-
-## Observacoes
-
-- Os manifests Kubernetes usam imagens no formato `${DOCKER_USER}/<service>:${IMAGE_TAG}`.
-- O arquivo `k8s/env.sh` e a principal configuracao para imagem/tag e host de acesso.
-- Para limpar port-forwards iniciados pelo `k8s/scripts/start.sh`, execute:
+### 4) Deploy AWS (producao)
 
 ```bash
-cd k8s/scripts
-bash stop-port-forward.sh
+cd terraform/envs/prod
+./setup-backend.sh          # Cria bucket S3 + tabela DynamoDB para estado remoto
+terraform init
+terraform apply -target=module.ecr -auto-approve   # Cria repositorios ECR
+# Build e push das imagens Docker para ECR (veja o README de cada API)
+terraform apply -auto-approve                      # Deploy completo
 ```
+
+Documentacao: `terraform/README.md`.
+
+## Monitoramento (AWS)
+
+Apos deploy na AWS, o Grafana fica disponivel em:
+
+```bash
+terraform output grafana_url
+# http://<eip>:3000  (login: admin / admin)
+```
+
+O Prometheus coleta metricas de todas as APIs automaticamente. Logs das aplicacoes ficam no CloudWatch.

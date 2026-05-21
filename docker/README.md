@@ -1,125 +1,74 @@
-# Ambiente Local k8s-like com Docker Compose
+# Infraestrutura Local de Desenvolvimento
 
-Este diretório sobe uma stack local espelhando o ambiente Kubernetes:
+Este diretorio sobe a infraestrutura compartilhada para desenvolvimento local das APIs:
 
-- PostgreSQL
-- RabbitMQ
-- Redis
-- users-api
-- catalog-api
-- payments-api
-- notifications-api
+- PostgreSQL 16
+- RabbitMQ 3.13 (management)
+- Redis 7
+- MongoDB 7
 
-## Dependências
+> **Este e o ambiente de desenvolvimento local.** Para deploy em producao na AWS, veja [`terraform/README.md`](../terraform/README.md).
 
-- Docker Desktop (ou Docker Engine)
-- Docker Compose
-- Imagens das APIs disponíveis localmente ou em registry acessível pelo Docker local
+## Dependencias
 
-Por padrão, as imagens esperadas são:
+- Docker Desktop (ou Docker Engine + Compose)
 
-- `postech/users-api:local`
-- `postech/catalog-api:local`
-- `postech/payments-api:local`
-- `postech/notifications-api:local`
-
-Se você usa outro prefixo/tag:
+## Subir a infra local
 
 ```bash
-export DOCKER_USER=seu-usuario
-export IMAGE_TAG=sua-tag
-```
-
-As variaveis sao centralizadas em `postech-orchestration/.env`.
-Se nao existir, o script `scripts/start-complete.sh` cria automaticamente
-o arquivo a partir de `postech-orchestration/.env.example`.
-
-## Comandos principais
-
-### Subir tudo
-
-```bash
-cd temp
+cd docker
 docker compose up -d
 ```
 
-Ou usando o script (recomendado):
+## Verificar status
 
 ```bash
-cd temp
-bash scripts/start-complete.sh
-```
-
-### Ver status
-
-```bash
-cd temp
 docker compose ps
 ```
 
-### Ver logs
+## Ver logs
 
 ```bash
-cd temp
-docker compose logs -f users-api
+docker compose logs -f postgresql
+docker compose logs -f mongodb
 ```
 
-### Parar ambiente
+## Parar
 
 ```bash
-cd temp
 docker compose down
 ```
 
-### Reset completo (remove volumes)
+## Remover tudo (inclui volumes)
 
 ```bash
-cd temp
 docker compose down -v
 ```
 
-## Endpoints
+## Endpoints locais
 
-### APIs
+| Servico | Host | Porta | Notas |
+|---------|------|-------|-------|
+| PostgreSQL | `localhost` | `5432` | DB: `postech_main`, user: `postech_admin`, pass: `postech_dev_password` |
+| RabbitMQ AMQP | `localhost` | `5672` | user: `postech_user`, pass: `postech_rabbit_password` |
+| RabbitMQ UI | `http://localhost:15672` | — | Management console |
+| Redis | `localhost` | `6379` | Sem autenticacao |
+| MongoDB | `localhost` | `27017` | user: `postech_admin`, pass: `postech_dev_password` |
 
-- Users: `http://localhost:8081`
-- Catalog: `http://localhost:8082`
-- Payments: `http://localhost:8083`
-- Notifications: `http://localhost:8084`
+Os aliases de rede internos simulam DNS de Kubernetes (`*.infrastructure.svc.cluster.local`), permitindo reaproveitar as mesmas variaveis de host entre ambientes.
 
-Rotas Scalar (quando habilitadas na API):
+## Como usar com as APIs
 
-- Users: `http://localhost:8081/scalar/v1`
-- Catalog: `http://localhost:8082/scalar/v1`
-- Payments: `http://localhost:8083/scalar/v1`
-- Notifications: `http://localhost:8084/scalar/v1`
+Apos subir a infra, cada API pode ser executada localmente com `dotnet run`. As connection strings em `appsettings.json` de cada servico ja apontam para `localhost` com as credenciais acima.
 
-### Infra
-
-- PostgreSQL: `localhost:5432`
-- RabbitMQ AMQP: `localhost:5672`
-- RabbitMQ UI: `http://localhost:15672`
-- Redis: `localhost:6379`
-
-## Exemplo de uso integrado
-
-Fluxo comum para validar imagens e stack local:
+Exemplo com o Catalog API:
 
 ```bash
-# 1) (Opcional) build de imagens no fluxo k8s
-cd ../k8s/scripts
-bash rebuild-images.sh
-
-# 2) subir stack local k8s-like
-cd ../../temp
+# Terminal 1: infra
+cd postech-orchestration/docker
 docker compose up -d
 
-# 3) validar containers e logs
-docker compose ps
-docker compose logs -f payments-api
+# Terminal 2: API
+cd postech-catalog-api/src/Postech.Catalog.Api
+dotnet run
 ```
-
-## Observações
-
-- Os aliases de rede internos simulam DNS de Kubernetes (`*.infrastructure.svc.cluster.local`).
-- Isso permite reaproveitar as mesmas variáveis de host usadas nos manifests do cluster.

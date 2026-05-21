@@ -173,6 +173,23 @@ module "notification_order_processed_lambda" {
   lambda_role_name = var.lambda_role_name
 }
 
+module "monitoring" {
+  source                    = "../../modules/compute_monitoring"
+  aws_region                = var.aws_region
+  name_prefix               = var.name_prefix
+  vpc_id                    = module.network.vpc_id
+  subnet_id                 = module.network.subnet_ids[0]
+  key_pair_name             = var.key_pair_name
+  iam_instance_profile_name = var.lab_instance_profile_name
+  admin_cidr                = var.admin_cidr
+
+  scrape_targets = {
+    catalog-api  = { host = module.catalog_service.eip_public_ip, port = "80" }
+    users-api    = { host = module.users_service.eip_public_ip, port = "80" }
+    payments-api = { host = module.payments_service.eip_public_ip, port = "80" }
+  }
+}
+
 module "cloudwatch" {
   source         = "../../modules/cloudwatch"
   name_prefix    = var.name_prefix
