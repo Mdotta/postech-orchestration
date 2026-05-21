@@ -1,5 +1,0 @@
-35612:postgresql:5432
-35613:users-api:8081
-35614:catalog-api:8082
-35615:payments-api:8083
-35616:notifications-api:8084
