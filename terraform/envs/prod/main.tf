@@ -1,6 +1,6 @@
 module "network" {
-  source     = "../../modules/network-default"
-  aws_region = var.aws_region
+  source      = "../../modules/network"
+  name_prefix = var.name_prefix
 }
 
 module "security_groups" {
