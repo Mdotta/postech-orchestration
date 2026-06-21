@@ -106,3 +106,9 @@ variable "elasticsearch_instance_type" {
   default     = "t3.small"
 }
 
+variable "eks_node_count" {
+  type        = number
+  description = "Number of EKS worker nodes"
+  default     = 3
+}
+

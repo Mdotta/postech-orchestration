@@ -58,6 +58,14 @@ module "redis" {
   engine_version = var.redis_engine_version
 }
 
+module "eks" {
+  source      = "../../modules/eks"
+  name_prefix = var.name_prefix
+  vpc_id      = module.network.vpc_id
+  subnet_ids  = module.network.subnet_ids
+  node_count  = var.eks_node_count
+}
+
 module "elasticsearch" {
   source                    = "../../modules/elasticsearch"
   name_prefix               = var.name_prefix
