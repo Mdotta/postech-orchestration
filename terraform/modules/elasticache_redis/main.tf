@@ -23,13 +23,13 @@ resource "aws_security_group" "redis" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "redis_from_ec2" {
-  security_group_id            = aws_security_group.redis.id
-  referenced_security_group_id = var.ec2_sg_id
-  from_port                    = var.port
-  to_port                      = var.port
-  ip_protocol                  = "tcp"
-  description                  = "Allow EC2 instances to reach Redis"
+resource "aws_vpc_security_group_ingress_rule" "redis_from_vpc" {
+  security_group_id = aws_security_group.redis.id
+  cidr_ipv4         = var.vpc_cidr_block
+  from_port         = var.port
+  to_port           = var.port
+  ip_protocol       = "tcp"
+  description       = "Allow VPC to reach Redis"
 }
 
 resource "aws_elasticache_subnet_group" "this" {

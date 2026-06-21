@@ -18,9 +18,9 @@ variable "subnet_ids" {
   description = "Subnet IDs for the ElastiCache subnet group"
 }
 
-variable "ec2_sg_id" {
+variable "vpc_cidr_block" {
   type        = string
-  description = "EC2 security group ID allowed to reach Redis"
+  description = "VPC CIDR block allowed to reach Redis"
 }
 
 variable "node_type" {

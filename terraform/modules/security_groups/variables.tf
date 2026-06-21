@@ -8,8 +8,12 @@ variable "vpc_id" {
   description = "VPC ID"
 }
 
-variable "admin_cidr" {
+variable "vpc_cidr_block" {
   type        = string
-  description = "CIDR allowed to SSH"
+  description = "VPC CIDR block for ingress rules"
 }
 
+variable "admin_cidr" {
+  type        = string
+  description = "CIDR allowed for admin access"
+}

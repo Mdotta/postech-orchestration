@@ -29,24 +29,16 @@ output "sns_order_created_topic_arn" {
   value = module.messaging.order_created_topic_arn
 }
 
+output "sns_order_processed_topic_arn" {
+  value = module.messaging.order_processed_topic_arn
+}
+
 output "sqs_catalog_order_processed_queue_url" {
   value = module.messaging.catalog_order_processed_queue_url
 }
 
 output "sqs_payments_order_created_queue_url" {
   value = module.messaging.payments_order_created_queue_url
-}
-
-output "users_eip" {
-  value = module.users_service.eip_public_ip
-}
-
-output "catalog_eip" {
-  value = module.catalog_service.eip_public_ip
-}
-
-output "payments_eip" {
-  value = module.payments_service.eip_public_ip
 }
 
 output "api_gateway_invoke_url" {
@@ -101,24 +93,10 @@ output "dynamodb_notifications_event_logs_table_arn" {
   description = "DynamoDB table ARN for notifications event logs"
 }
 
-output "grafana_url" {
-  value       = module.monitoring.grafana_url
-  description = "Grafana dashboard URL (login: admin / admin)"
-}
-
-output "prometheus_url" {
-  value       = module.monitoring.prometheus_url
-  description = "Prometheus UI URL"
-}
-
 output "redis_endpoint" {
-  value       = module.redis.primary_endpoint
-  description = "ElastiCache Redis primary endpoint"
-}
-
-output "elasticsearch_endpoint" {
-  value       = module.elasticsearch.endpoint
-  description = "Elasticsearch connection URL (self-hosted on EC2)"
+  value       = module.redis.connection_string
+  description = "ElastiCache Redis connection string (includes auth)"
+  sensitive   = true
 }
 
 output "eks_cluster_name" {
@@ -129,5 +107,10 @@ output "eks_cluster_name" {
 output "eks_cluster_endpoint" {
   value       = module.eks.cluster_endpoint
   description = "EKS cluster API endpoint"
+}
+
+output "grafana_access" {
+  value       = "kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80"
+  description = "Grafana access command (login: admin/admin)"
 }
 
