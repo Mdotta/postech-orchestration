@@ -78,6 +78,12 @@ resource "aws_apigatewayv2_route" "catalog_list_public" {
   target    = "integrations/${aws_apigatewayv2_integration.catalog.id}"
 }
 
+resource "aws_apigatewayv2_route" "catalog_search_public" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "GET /game/search"
+  target    = "integrations/${aws_apigatewayv2_integration.catalog.id}"
+}
+
 resource "aws_apigatewayv2_route" "catalog_post" {
   api_id             = aws_apigatewayv2_api.this.id
   route_key          = "POST /game"

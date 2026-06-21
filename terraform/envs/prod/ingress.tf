@@ -8,6 +8,15 @@ resource "kubernetes_ingress_v1" "postech" {
   spec {
     ingress_class_name = "nginx"
 
+    default_backend {
+      service {
+        name = "users-api"
+        port {
+          number = 80
+        }
+      }
+    }
+
     rule {
       http {
         path {
@@ -28,6 +37,30 @@ resource "kubernetes_ingress_v1" "postech" {
           backend {
             service {
               name = "catalog-api"
+              port {
+                number = 80
+              }
+            }
+          }
+        }
+        path {
+          path      = "/health"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "catalog-api"
+              port {
+                number = 80
+              }
+            }
+          }
+        }
+        path {
+          path      = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "users-api"
               port {
                 number = 80
               }

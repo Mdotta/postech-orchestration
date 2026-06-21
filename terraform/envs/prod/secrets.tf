@@ -1,4 +1,4 @@
-# ── Kubernetes Secrets (created by Terraform from module outputs) ──────────
+# ── Kubernetes Secrets (AWS creds patched at deploy time by CI) ────────────
 
 resource "kubernetes_secret_v1" "catalog_api" {
   metadata {

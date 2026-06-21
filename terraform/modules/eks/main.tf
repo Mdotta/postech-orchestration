@@ -130,11 +130,30 @@ resource "aws_eks_cluster" "this" {
 
 # ── Node Group ──────────────────────────────────────────────────────────────
 
+resource "aws_launch_template" "node" {
+  name = "${var.name_prefix}-eks-node-template"
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
+  tags = {
+    Name = "${var.name_prefix}-eks-node-template"
+  }
+}
+
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.name_prefix}-eks-nodes"
   node_role_arn   = local.node_role_arn
   subnet_ids      = var.subnet_ids
+
+  launch_template {
+    id      = aws_launch_template.node.id
+    version = aws_launch_template.node.latest_version
+  }
 
   instance_types = [var.node_instance_type]
 
