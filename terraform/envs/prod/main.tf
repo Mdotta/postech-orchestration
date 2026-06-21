@@ -75,9 +75,8 @@ module "apigw" {
   jwt_issuer   = module.cognito.jwt_issuer
   jwt_audience = module.cognito.client_id
 
-  # Updated post-deploy by ./aws/update-api-gateway-eks.sh
-  users_integration_uri   = "http://localhost"
-  catalog_integration_uri = "http://localhost"
+  users_integration_uri   = "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}"
+  catalog_integration_uri = "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}"
 }
 
 module "notification_user_created_lambda" {
