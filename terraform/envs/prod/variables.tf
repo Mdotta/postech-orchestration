@@ -58,6 +58,18 @@ variable "redis_engine_version" {
   default     = "7.0"
 }
 
+variable "existing_cluster_role_name" {
+  type        = string
+  description = "Existing EKS cluster IAM role name (auto-discovered by setup.sh)"
+  default     = ""
+}
+
+variable "existing_node_role_name" {
+  type        = string
+  description = "Existing EKS node IAM role name (auto-discovered by setup.sh)"
+  default     = ""
+}
+
 variable "eks_node_count" {
   type        = number
   description = "Number of EKS worker nodes"

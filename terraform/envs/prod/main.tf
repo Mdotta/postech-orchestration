@@ -65,8 +65,8 @@ module "eks" {
   vpc_id                      = module.network.vpc_id
   subnet_ids                  = module.network.subnet_ids
   node_count                  = var.eks_node_count
-  existing_cluster_role_name  = "c216482a5468275l15628002t1w565655-LabEksClusterRole-u3Zw87bc6Auu"
-  existing_node_role_name     = "c216482a5468275l15628002t1w565655678-LabEksNodeRole-nFzFY9BIBxcZ"
+  existing_cluster_role_name  = var.existing_cluster_role_name
+  existing_node_role_name     = var.existing_node_role_name
 }
 
 module "apigw" {

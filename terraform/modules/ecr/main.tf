@@ -13,6 +13,7 @@ resource "aws_ecr_repository" "users" {
 resource "aws_ecr_repository" "catalog" {
   name                 = local.catalog_repo
   image_tag_mutability = "MUTABLE"
+  
 }
 
 resource "aws_ecr_repository" "payments" {

@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: payments-api-config
-data:
-  AWS__Region: us-east-1
