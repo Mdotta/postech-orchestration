@@ -58,6 +58,17 @@ module "redis" {
   engine_version = var.redis_engine_version
 }
 
+module "opensearch" {
+  source         = "../../modules/opensearch"
+  name_prefix    = var.name_prefix
+  aws_region     = var.aws_region
+  vpc_id         = module.network.vpc_id
+  subnet_ids     = module.network.subnet_ids
+  ec2_sg_id      = module.security_groups.ec2_sg_id
+  instance_type  = var.opensearch_instance_type
+  instance_count = var.opensearch_instance_count
+}
+
 module "users_service" {
   source                    = "../../modules/compute_ec2_service"
   aws_region                = var.aws_region
@@ -112,6 +123,7 @@ module "catalog_service" {
     "Redis__ConnectionString"              = module.redis.connection_string
     "DynamoDB__UseDynamoDB"               = "true"
     "DynamoDB__TableName"                 = module.dynamodb.catalog_games_table_name
+    "OpenSearch__Endpoint"                = module.opensearch.connection_string
   }
 }
 

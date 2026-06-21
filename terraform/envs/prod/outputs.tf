@@ -116,3 +116,8 @@ output "redis_endpoint" {
   description = "ElastiCache Redis primary endpoint"
 }
 
+output "opensearch_endpoint" {
+  value       = module.opensearch.domain_endpoint
+  description = "OpenSearch domain endpoint (VPC-internal)"
+}
+
