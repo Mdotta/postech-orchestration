@@ -1,16 +1,30 @@
 data "aws_caller_identity" "current" {}
 
-# ── IAM ────────────────────────────────────────────────────────────────────
+# ── IAM (use pre-existing roles if provided, otherwise create) ──────────────
+
+data "aws_iam_role" "cluster" {
+  name = var.existing_cluster_role_name
+}
+
+data "aws_iam_role" "node" {
+  name = var.existing_node_role_name
+}
+
+locals {
+  cluster_role_arn = var.existing_cluster_role_name != "" ? data.aws_iam_role.cluster.arn : aws_iam_role.cluster[0].arn
+  node_role_arn    = var.existing_node_role_name != "" ? data.aws_iam_role.node.arn : aws_iam_role.node[0].arn
+}
 
 resource "aws_iam_role" "cluster" {
-  name = "${var.name_prefix}-eks-cluster"
+  count = var.existing_cluster_role_name != "" ? 0 : 1
+  name  = "${var.name_prefix}-eks-cluster"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "eks.amazonaws.com" }
-      Action   = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 
@@ -18,19 +32,21 @@ resource "aws_iam_role" "cluster" {
 }
 
 resource "aws_iam_role_policy_attachment" "cluster" {
-  role       = aws_iam_role.cluster.name
+  count      = var.existing_cluster_role_name != "" ? 0 : 1
+  role       = aws_iam_role.cluster[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
 resource "aws_iam_role" "node" {
-  name = "${var.name_prefix}-eks-node"
+  count = var.existing_node_role_name != "" ? 0 : 1
+  name  = "${var.name_prefix}-eks-node"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "ec2.amazonaws.com" }
-      Action   = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 
@@ -38,22 +54,26 @@ resource "aws_iam_role" "node" {
 }
 
 resource "aws_iam_role_policy_attachment" "node_worker" {
-  role       = aws_iam_role.node.name
+  count      = var.existing_node_role_name != "" ? 0 : 1
+  role       = aws_iam_role.node[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
 resource "aws_iam_role_policy_attachment" "node_cni" {
-  role       = aws_iam_role.node.name
+  count      = var.existing_node_role_name != "" ? 0 : 1
+  role       = aws_iam_role.node[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
 resource "aws_iam_role_policy_attachment" "node_ecr" {
-  role       = aws_iam_role.node.name
+  count      = var.existing_node_role_name != "" ? 0 : 1
+  role       = aws_iam_role.node[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_iam_role_policy_attachment" "node_ssm" {
-  role       = aws_iam_role.node.name
+  count      = var.existing_node_role_name != "" ? 0 : 1
+  role       = aws_iam_role.node[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
@@ -91,7 +111,7 @@ resource "aws_vpc_security_group_ingress_rule" "cluster_https_self" {
 
 resource "aws_eks_cluster" "this" {
   name     = "${var.name_prefix}-eks"
-  role_arn = aws_iam_role.cluster.arn
+  role_arn = local.cluster_role_arn
   version  = var.kubernetes_version
 
   vpc_config {
@@ -108,28 +128,12 @@ resource "aws_eks_cluster" "this" {
   }
 }
 
-# ── OIDC Provider (for IRSA) ────────────────────────────────────────────────
-
-data "tls_certificate" "eks" {
-  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
-}
-
-resource "aws_iam_openid_connect_provider" "this" {
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
-  url             = aws_eks_cluster.this.identity[0].oidc[0].issuer
-
-  tags = {
-    Name = "${var.name_prefix}-eks-oidc"
-  }
-}
-
 # ── Node Group ──────────────────────────────────────────────────────────────
 
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.name_prefix}-eks-nodes"
-  node_role_arn   = aws_iam_role.node.arn
+  node_role_arn   = local.node_role_arn
   subnet_ids      = var.subnet_ids
 
   instance_types = [var.node_instance_type]

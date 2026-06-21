@@ -1,6 +1,6 @@
 # ── Kubernetes Secrets (created by Terraform from module outputs) ──────────
 
-resource "kubernetes_secret" "catalog_api" {
+resource "kubernetes_secret_v1" "catalog_api" {
   metadata {
     name = "catalog-api-secret"
   }
@@ -14,7 +14,7 @@ resource "kubernetes_secret" "catalog_api" {
   }
 }
 
-resource "kubernetes_secret" "users_api" {
+resource "kubernetes_secret_v1" "users_api" {
   metadata {
     name = "users-api-secret"
   }
@@ -27,7 +27,7 @@ resource "kubernetes_secret" "users_api" {
   }
 }
 
-resource "kubernetes_secret" "payments_api" {
+resource "kubernetes_secret_v1" "payments_api" {
   metadata {
     name = "payments-api-secret"
   }

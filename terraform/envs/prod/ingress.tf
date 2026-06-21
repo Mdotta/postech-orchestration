@@ -1,18 +1,12 @@
-# ── Ingress (creates ALB) ───────────────────────────────────────────────────
+# ── Ingress (uses nginx-ingress controller) ─────────────────────────────────
 
 resource "kubernetes_ingress_v1" "postech" {
   metadata {
     name = "postech-ingress"
-    annotations = {
-      "alb.ingress.kubernetes.io/scheme"        = "internet-facing"
-      "alb.ingress.kubernetes.io/target-type"    = "ip"
-      "alb.ingress.kubernetes.io/listen-ports"   = "[{\"HTTP\":80}]"
-      "alb.ingress.kubernetes.io/group.name"     = "postech"
-    }
   }
 
   spec {
-    ingress_class_name = "alb"
+    ingress_class_name = "nginx"
 
     rule {
       http {
@@ -45,9 +39,8 @@ resource "kubernetes_ingress_v1" "postech" {
   }
 
   depends_on = [
-    helm_release.alb_controller,
-    kubernetes_secret.catalog_api,
-    kubernetes_secret.users_api,
-    kubernetes_secret.payments_api,
+    kubernetes_secret_v1.catalog_api,
+    kubernetes_secret_v1.users_api,
+    kubernetes_secret_v1.payments_api,
   ]
 }

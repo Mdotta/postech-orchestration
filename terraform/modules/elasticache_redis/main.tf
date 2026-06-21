@@ -40,7 +40,7 @@ resource "aws_elasticache_subnet_group" "this" {
 
 resource "aws_elasticache_parameter_group" "this" {
   family      = "redis7"
-  name        = "${var.name_prefix}-redis-params"
+  name        = "${var.name_prefix}-redis-params-v2"
   description = "Redis 7 parameter group for postech services"
 
   parameter {

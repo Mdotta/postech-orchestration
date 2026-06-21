@@ -60,11 +60,13 @@ module "redis" {
 }
 
 module "eks" {
-  source      = "../../modules/eks"
-  name_prefix = var.name_prefix
-  vpc_id      = module.network.vpc_id
-  subnet_ids  = module.network.subnet_ids
-  node_count  = var.eks_node_count
+  source                      = "../../modules/eks"
+  name_prefix                 = var.name_prefix
+  vpc_id                      = module.network.vpc_id
+  subnet_ids                  = module.network.subnet_ids
+  node_count                  = var.eks_node_count
+  existing_cluster_role_name  = "c216482a5468275l15628002t1w565655-LabEksClusterRole-u3Zw87bc6Auu"
+  existing_node_role_name     = "c216482a5468275l15628002t1w565655678-LabEksNodeRole-nFzFY9BIBxcZ"
 }
 
 module "apigw" {
@@ -75,8 +77,8 @@ module "apigw" {
   jwt_issuer   = module.cognito.jwt_issuer
   jwt_audience = module.cognito.client_id
 
-  users_integration_uri   = "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}"
-  catalog_integration_uri = "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}"
+  users_integration_uri = can(kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname) ? "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}" : "http://placeholder"
+  catalog_integration_uri = can(kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname) ? "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}" : "http://placeholder"
 }
 
 module "notification_user_created_lambda" {

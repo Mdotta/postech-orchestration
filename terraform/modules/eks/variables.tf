@@ -30,3 +30,15 @@ variable "kubernetes_version" {
   description = "EKS Kubernetes version"
   default     = "1.31"
 }
+
+variable "existing_cluster_role_name" {
+  type        = string
+  description = "Name of pre-existing IAM role for EKS cluster (use if iam:CreateRole is denied)"
+  default     = ""
+}
+
+variable "existing_node_role_name" {
+  type        = string
+  description = "Name of pre-existing IAM role for EKS nodes (use if iam:CreateRole is denied)"
+  default     = ""
+}

@@ -13,17 +13,7 @@ output "cluster_ca_certificate" {
   description = "EKS cluster CA certificate (base64)"
 }
 
-output "oidc_provider_arn" {
-  value       = aws_iam_openid_connect_provider.this.arn
-  description = "OIDC provider ARN for IRSA"
-}
-
-output "oidc_provider_url" {
-  value       = aws_iam_openid_connect_provider.this.url
-  description = "OIDC provider URL"
-}
-
 output "node_role_arn" {
-  value       = aws_iam_role.node.arn
+  value       = local.node_role_arn
   description = "Node IAM role ARN"
 }
