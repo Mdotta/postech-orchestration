@@ -24,7 +24,7 @@ docker run -d \
   -p ${container_port}:${container_port} \
   -e ASPNETCORE_URLS="http://+:${container_port}" \
 %{ for k, v in env ~}
-  -e "${k}=${v}" \
+  -e '${k}=${v}' \
 %{ endfor ~}
   "${image}"
 %{ else ~}
@@ -34,7 +34,7 @@ docker run -d \
   -p ${container_port}:${container_port} \
   -e ASPNETCORE_URLS="http://+:${container_port}" \
 %{ for k, v in env ~}
-  -e "${k}=${v}" \
+  -e '${k}=${v}' \
 %{ endfor ~}
   "${image}"
 %{ endif ~}

@@ -100,15 +100,9 @@ variable "redis_engine_version" {
   default     = "7.0"
 }
 
-variable "opensearch_instance_type" {
+variable "elasticsearch_instance_type" {
   type        = string
-  description = "OpenSearch data node instance class"
-  default     = "t3.small.search"
-}
-
-variable "opensearch_instance_count" {
-  type        = number
-  description = "Number of OpenSearch data nodes"
-  default     = 1
+  description = "Elasticsearch EC2 instance class"
+  default     = "t3.small"
 }
 
