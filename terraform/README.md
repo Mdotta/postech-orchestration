@@ -100,7 +100,7 @@ Cria apenas os repositorios ECR. Necessario antes do build das imagens porque as
 
 ```bash
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-ECR="${ACCOUNT}.dkr.ecr.us-east-1.amazonaws.com/tf-postech-postech"
+ECR="${ACCOUNT}.dkr.ecr.us-east-1.amazonaws.com/tf-postech-"
 REGION="us-east-1"
 
 aws ecr get-login-password --region ${REGION} | \

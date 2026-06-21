@@ -1,8 +1,8 @@
 locals {
-  users_repo    = "${var.name_prefix}-postech-users-api"
-  catalog_repo  = "${var.name_prefix}-postech-catalog-api"
-  payments_repo           = "${var.name_prefix}-postech-payments-api"
-  notifications_lambda_repo = "${var.name_prefix}-postech-notifications-lambda"
+  users_repo                 = "${var.name_prefix}-users-api"
+  catalog_repo               = "${var.name_prefix}-catalog-api"
+  payments_repo              = "${var.name_prefix}-payments-api"
+  notifications_lambda_repo  = "${var.name_prefix}-notifications-lambda"
 }
 
 resource "aws_ecr_repository" "users" {

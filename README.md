@@ -132,7 +132,7 @@ workflow_dispatch (manual trigger)
 |----------|-------|
 | `AWS_REGION` | `us-east-1` |
 | `AWS_ACCOUNT_ID` | `565655678867` |
-| `ECR_REPO` | `tf-postech-postech-catalog-api` (varies per service) |
+| `ECR_REPO` | `tf-postech-catalog-api` (varies per service) |
 
 ---
 

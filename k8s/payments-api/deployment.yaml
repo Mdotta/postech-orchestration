@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: payments-api
-          image: 565655678867.dkr.ecr.us-east-1.amazonaws.com/tf-postech-postech-payments-api:latest
+          image: 565655678867.dkr.ecr.us-east-1.amazonaws.com/tf-postech-payments-api:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
