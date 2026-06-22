@@ -41,8 +41,6 @@ Microservices platform for a digital game sales platform, deployed on AWS EKS.
 | API Gateway HTTP (JWT authorizer) | `modules/apigw_http` |
 | Lambda (notifications ×2) | `modules/lambda_notification` |
 | kube-prometheus-stack (Helm) | `addons.tf` |
-| Elasticsearch StatefulSet | `elasticsearch.tf` |
-| ServiceMonitors (3) | `servicemonitors.tf` |
 | K8s Secrets (3) | `secrets.tf` |
 | Ingress (nginx) | `ingress.tf` |
 
@@ -58,7 +56,7 @@ Microservices platform for a digital game sales platform, deployed on AWS EKS.
 
 ---
 
-## Quick Start (from zero)
+## Manual Deployment (from zero)
 
 ### Prerequisites
 
@@ -69,32 +67,180 @@ Microservices platform for a digital game sales platform, deployed on AWS EKS.
 - docker
 - AWS Academy credentials (access key, secret key, session token)
 
-### Steps
+---
+
+### Step 1 — Terraform backend
 
 ```bash
-# 1. Clone this repo
 cd postech-orchestration
-
-# 2. Create .env from template
-cp .env.example .env
-# Edit .env with your values (password + AWS credentials)
-
-# 3. Run the bootstrap script
-./setup.sh
-# → Creates ECR repos, then prompts you to push images.
-# → After images are pushed (press Enter), continues with full apply.
+./aws/setup-terraform-backend.sh
 ```
 
-### After setup.sh
+---
+
+### Step 2 — Key pair
 
 ```bash
-# 4. Deploy services to EKS
-#    For each service repo, go to Actions tab → Run workflow (deploy)
-#    This patches AWS credentials + deploys/updates services on EKS
+aws ec2 create-key-pair --key-name postech-key --region us-east-1 \
+  --query 'KeyMaterial' --output text > postech-key.pem
+chmod 400 postech-key.pem
+```
 
-# 5. Verify
+---
+
+### Step 3 — Discover EKS IAM roles
+
+AWS Academy provides pre-built EKS roles. Their names vary per session.
+
+```bash
+EKS_CLUSTER_ROLE=$(aws iam list-roles --query 'Roles[*].RoleName' \
+  --output text | tr '\t' '\n' | grep LabEksClusterRole)
+EKS_NODE_ROLE=$(aws iam list-roles --query 'Roles[*].RoleName' \
+  --output text | tr '\t' '\n' | grep LabEksNodeRole)
+
+echo "Cluster: $EKS_CLUSTER_ROLE"
+echo "Node:    $EKS_NODE_ROLE"
+```
+
+---
+
+### Step 4 — Terraform (ECR repos only)
+
+ECR repos must exist before images can be pushed.
+
+```bash
+cd postech-orchestration/terraform/envs/prod
+terraform init
+
+terraform apply -target=module.ecr -auto-approve \
+  -var="db_password=<your-password>" \
+  -var="existing_cluster_role_name=$EKS_CLUSTER_ROLE" \
+  -var="existing_node_role_name=$EKS_NODE_ROLE"
+```
+
+---
+
+### Step 5 — Build and push Docker images
+
+From each service repo:
+
+```bash
+cd postech-catalog-api && AWS_ACCOUNT_ID=565655678867 ./infra/deploy-ecr.sh
+cd postech-users-api && AWS_ACCOUNT_ID=565655678867 ./infra/deploy-ecr.sh
+cd postech-payments-api && AWS_ACCOUNT_ID=565655678867 ./infra/deploy-ecr.sh
+cd postech-notifications-api && AWS_ACCOUNT_ID=565655678867 ./infra/deploy-ecr.sh
+```
+
+---
+
+### Step 6 — Terraform (full apply)
+
+```bash
+cd postech-orchestration/terraform/envs/prod
+
+terraform apply -auto-approve \
+  -var="db_password=<your-password>" \
+  -var="existing_cluster_role_name=$EKS_CLUSTER_ROLE" \
+  -var="existing_node_role_name=$EKS_NODE_ROLE"
+```
+
+Takes ~20 minutes. Provisions VPC, EKS, RDS, Redis, DynamoDB, Cognito, SNS/SQS, Lambda, kube-prometheus-stack, K8s secrets, Ingress.
+
+---
+
+### Step 7 — EKS kubeconfig
+
+```bash
+aws eks update-kubeconfig --region us-east-1 --name tf-postech-eks
+kubectl get nodes   # expect 3 Ready nodes
+```
+
+---
+
+### Step 8 — Nginx ingress controller
+
+```bash
+kubectl apply --validate=false -f \
+  https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.1/deploy/static/provider/aws/deploy.yaml
+```
+
+Wait for it to be ready:
+
+```bash
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=120s
+```
+
+---
+
+### Step 9 — AWS credentials for pods
+
+Pods need AWS credentials to use SNS, SQS, DynamoDB, Cognito.
+
+```bash
+kubectl create secret generic aws-credentials \
+  --from-literal=AWS_ACCESS_KEY_ID="<key>" \
+  --from-literal=AWS_SECRET_ACCESS_KEY="<secret>" \
+  --from-literal=AWS_SESSION_TOKEN="<token>" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+---
+
+### Step 10 — Shared K8s resources
+
+```bash
+cd postech-orchestration
+
+kubectl apply -f k8s/elasticsearch/
+
+kubectl apply -f k8s/catalog-api/servicemonitor.yaml
+kubectl apply -f k8s/users-api/servicemonitor.yaml
+kubectl apply -f k8s/payments-api/servicemonitor.yaml
+
+# Wait for Elasticsearch
+kubectl wait --for=condition=ready pod \
+  --selector=app=elasticsearch --timeout=180s
+```
+
+---
+
+### Step 11 — Deploy service workloads
+
+From each service repo, apply its K8s manifests:
+
+```bash
+cd postech-catalog-api && kubectl apply -f k8s/
+cd postech-users-api && kubectl apply -f k8s/
+cd postech-payments-api && kubectl apply -f k8s/
+```
+
+Or trigger CI deploy workflows from GitHub Actions.
+
+---
+
+### Step 12 — Finalize API Gateway
+
+The first Terraform apply used a placeholder URL. This re-apply reads the real NLB DNS from the Ingress and updates API Gateway.
+
+```bash
+cd postech-orchestration/terraform/envs/prod
+terraform apply -auto-approve \
+  -var="db_password=<your-password>" \
+  -var="existing_cluster_role_name=$EKS_CLUSTER_ROLE" \
+  -var="existing_node_role_name=$EKS_NODE_ROLE"
+```
+
+---
+
+### Step 13 — Verify
+
+```bash
 API_URL=$(terraform output -raw api_gateway_invoke_url)
 curl "$API_URL/health"
+curl "$API_URL/game/search?q=zelda&fuzziness=2"
 ```
 
 ---
@@ -118,7 +264,7 @@ workflow_dispatch (manual trigger)
 | `docker` | Push to main | Build image + push to ECR |
 | `deploy` | Manual (`workflow_dispatch`) | Rolling update to EKS |
 
-### GitHub Secrets per repo
+### GitHub Secrets per repo (Settings → Secrets and variables → Actions)
 
 | Secret | Purpose |
 |--------|---------|
@@ -158,61 +304,18 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
 kubectl exec deployment/catalog-api -- wget -qO- http://elasticsearch:9200/_cluster/health
 ```
 
-### Services health
-
-```bash
-curl "$(terraform output -raw api_gateway_invoke_url)/health"
-```
-
 ---
 
-## Manual Deploy (without setup.sh)
+## Cleanup
 
 ```bash
-# 1. Backend
-cd aws && ./setup-terraform-backend.sh
+cd postech-orchestration/terraform/envs/prod
 
-# 2. Key pair
-aws ec2 create-key-pair --region us-east-1 --key-name postech-key \
-  --query 'KeyMaterial' --output text > ~/.ssh/postech-key.pem
-chmod 400 ~/.ssh/postech-key.pem
-
-# 3. Terraform
-cd ../terraform/envs/prod
-export TF_VAR_db_password="your-password"
-terraform init && terraform apply
-
-# 4. EKS kubeconfig
-aws eks update-kubeconfig --region us-east-1 --name tf-postech-eks
-
-# 5. Nginx ingress controller
-kubectl apply --validate=false -f \
-  https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.1/deploy/static/provider/aws/deploy.yaml
-
-# 6. AWS credentials for pods
-kubectl create secret generic aws-credentials \
-  --from-literal=AWS_ACCESS_KEY_ID="..." \
-  --from-literal=AWS_SECRET_ACCESS_KEY="..." \
-  --from-literal=AWS_SESSION_TOKEN="..." \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-# 7. Final terraform apply (API Gateway wiring)
-terraform apply
-
-# 8. Build & push images (each service repo)
-# 9. Deploy services (each service CI or kubectl apply)
+terraform destroy -auto-approve \
+  -var="db_password=..." \
+  -var="existing_cluster_role_name=$(aws iam list-roles --query 'Roles[*].RoleName' --output text | tr '\t' '\n' | grep LabEksClusterRole)" \
+  -var="existing_node_role_name=$(aws iam list-roles --query 'Roles[*].RoleName' --output text | tr '\t' '\n' | grep LabEksNodeRole)"
 ```
-
----
-
-## Adding a New Service
-
-1. Create repo with Dockerfile + .github/workflows/ci.yml
-2. Create `k8s/` directory: `deployment.yaml`, `service.yaml`, `configmap.yaml`
-3. Add K8s secret in `envs/prod/secrets.tf`
-4. Add ServiceMonitor in `envs/prod/servicemonitors.tf`
-5. Update Ingress in `envs/prod/ingress.tf`
-6. Push → CI builds image → manual deploy to EKS
 
 ---
 
@@ -220,8 +323,11 @@ terraform apply
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| `iam:CreateRole` denied | LabRole lacks IAM permissions | Uses pre-built EKS roles (configured in `main.tf`) |
-| Pods CrashLoopBackOff | Missing AWS credentials | Trigger any CI deploy → patches `aws-credentials` |
+| `iam:CreateRole` denied | LabRole lacks IAM permissions | Uses pre-built EKS roles (Step 3) |
+| Pods CrashLoopBackOff | Missing AWS credentials | Re-run Step 9 or trigger CI deploy |
 | 404 from API Gateway | Ingress routing missing | Check `ingress.tf` routes |
-| `Unable to locate credentials` | AWS creds expired | Refresh in `.env` + re-run setup.sh or CI deploy |
-| Elasticsearch not found | StatefulSet not deployed | `terraform apply` (added in `elasticsearch.tf`) |
+| `Unable to locate credentials` | AWS creds expired | Re-run Step 9 with fresh values |
+| Elasticsearch not found | StatefulSet not deployed | Run Step 10 |
+| `ResourceInUseException` for EKS | Cluster already exists | `aws eks delete-nodegroup ...` then `aws eks delete-cluster ...` |
+| `RepositoryAlreadyExistsException` | ECR name conflict | Delete old repos: `aws ecr delete-repository --force` |
+| Lambda `InvalidParameterValueException` | Image not in ECR | Push image first (Step 5) |
