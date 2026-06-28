@@ -223,7 +223,7 @@ Or trigger CI deploy workflows from GitHub Actions.
 
 ### Step 12 — Finalize API Gateway
 
-The first Terraform apply used a placeholder URL. This re-apply reads the real NLB DNS from the Ingress and updates API Gateway.
+The first apply used `http://0.0.0.0` as a placeholder. This re-apply reads the real NLB DNS from the Ingress and updates the API Gateway integrations.
 
 ```bash
 cd postech-orchestration/terraform/envs/prod

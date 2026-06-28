@@ -57,12 +57,6 @@ spec:
               port: 9200
             initialDelaySeconds: 30
             periodSeconds: 10
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 10Gi
+      volumes:
+        - name: data
+          emptyDir: {}

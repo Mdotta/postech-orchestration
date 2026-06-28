@@ -77,8 +77,8 @@ module "apigw" {
   jwt_issuer   = module.cognito.jwt_issuer
   jwt_audience = module.cognito.client_id
 
-  users_integration_uri = can(kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname) ? "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}" : "http://placeholder"
-  catalog_integration_uri = can(kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname) ? "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}" : "http://placeholder"
+  users_integration_uri = can(kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname) ? "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}" : "http://0.0.0.0"
+  catalog_integration_uri = can(kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname) ? "http://${kubernetes_ingress_v1.postech.status[0].load_balancer[0].ingress[0].hostname}" : "http://0.0.0.0"
 }
 
 module "notification_user_created_lambda" {
